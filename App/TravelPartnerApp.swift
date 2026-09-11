@@ -8,7 +8,9 @@ struct TravelPartnerApp: App {
     // AppContainer holds all dependency instances
     private let container = AppContainer.shared
     
-    public init() {}
+    public init() {
+        AppConfiguration.shared.configureFirebaseIfNeeded()
+    }
     
     var body: some Scene {
         WindowGroup {

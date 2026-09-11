@@ -1,0 +1,86 @@
+[
+  {
+    "shortDescription" : "A model trained using CreateML for use with CoreML.",
+    "metadataOutputVersion" : "3.0",
+    "outputSchema" : [
+      {
+        "isOptional" : "0",
+        "formattedType" : "Double",
+        "type" : "Double",
+        "name" : "recommendation_score",
+        "shortDescription" : ""
+      }
+    ],
+    "version" : "1",
+    "modelParameters" : [
+
+    ],
+    "author" : "webcodegenie",
+    "specificationVersion" : 1,
+    "stateSchema" : [
+
+    ],
+    "isUpdatable" : "0",
+    "availability" : {
+      "macOS" : "10.13",
+      "tvOS" : "11.0",
+      "visionOS" : "1.0",
+      "watchOS" : "4.0",
+      "iOS" : "11.0",
+      "macCatalyst" : "11.0"
+    },
+    "modelType" : {
+      "name" : "MLModelType_pipelineRegressor",
+      "structure" : [
+        {
+          "name" : "MLModelType_featureVectorizer"
+        },
+        {
+          "name" : "MLModelType_glmRegressor"
+        }
+      ]
+    },
+    "inputSchema" : [
+      {
+        "isOptional" : "0",
+        "formattedType" : "Double",
+        "type" : "Double",
+        "name" : "budget_ratio",
+        "shortDescription" : ""
+      },
+      {
+        "isOptional" : "0",
+        "formattedType" : "Double",
+        "type" : "Double",
+        "name" : "rating",
+        "shortDescription" : ""
+      },
+      {
+        "isOptional" : "0",
+        "formattedType" : "Double",
+        "type" : "Double",
+        "name" : "distance_center",
+        "shortDescription" : ""
+      },
+      {
+        "isOptional" : "0",
+        "formattedType" : "Double",
+        "type" : "Double",
+        "name" : "family_compatibility",
+        "shortDescription" : ""
+      },
+      {
+        "isOptional" : "0",
+        "formattedType" : "Double",
+        "type" : "Double",
+        "name" : "amenity_score",
+        "shortDescription" : ""
+      }
+    ],
+    "userDefinedMetadata" : {
+      "com.apple.createml.version" : "26.4.0"
+    },
+    "generatedClassName" : "HotelRankingModel",
+    "method" : "predict"
+  }
+]

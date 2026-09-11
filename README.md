@@ -12,12 +12,12 @@ When a user submits a natural-language request such as:
 > *"I want to go to Shimla for 5 days with 4 friends. My total budget is ₹50,000. I want a round trip."*
 
 The application coordinates a structured 10-step planning pipeline:
-1. **Natural-Language Understanding**: Gemini parses user prompts into a validated domain entity (`TripRequest`).
+1. **Natural-Language Understanding**: Gemini via official **Firebase AI SDK** (`FirebaseAI`) parses user prompts into a validated domain entity (`TripRequest`).
 2. **Live Volatile Search**: Uses Swift structured concurrency (`TaskGroup`) to query flights, trains, hotels, attractions, and weather concurrently.
 3. **Hard Business Constraints**: Enforces non-negotiable budget caps, room capacity equations (`ceil(travelers / capacity)`), and group safety policies deterministically.
-4. **On-Device ML Ranking**: Evaluates candidates locally using Apple's **Core ML** framework (with deterministic Multi-Criteria Decision Analysis fallback) to preserve user privacy.
+4. **On-Device ML Ranking**: Evaluates candidates locally using Apple's **Core ML** framework with 3 dedicated models (Hotels, Places, Transport) and persistent feedback personalization.
 5. **Algorithmic Itinerary Optimization**: Clusters places geographically using Haversine distance to minimize transit time, while verifying opening hours across morning, afternoon, and evening slots.
-6. **Grounded AI Presentation**: Gemini synthesizes an engaging itinerary narrative and transparent *"Recommended because:"* rationale bullets without hallucinating prices.
+6. **Grounded AI Presentation & Streaming**: Gemini synthesizes engaging itinerary narratives and transparent *"Recommended because:"* rationale bullets without hallucinating prices.
 7. **Firebase Persistence**: Persists itineraries and feedback to Firebase Firestore while strictly segregating live volatile travel data from application state.
 8. **Interactive AI Modifications**: Users can conversationally command *"Make this cheaper"* or *"Switch to a scenic train"*, and the engine swaps genuine candidates and recalculates costs in real time.
 

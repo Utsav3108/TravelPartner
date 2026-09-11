@@ -31,50 +31,100 @@ public final class MockFlightSearchProvider: FlightSearchProviderProtocol, @unch
         
         let meta = CandidateMetadata(source: "MockAviationGDS", expiresInSeconds: 1200, isMock: true)
         
-        return [
-            FlightCandidate(
-                airline: "IndiGo",
-                flightNumber: "6E-2041",
-                origin: origin.uppercased(),
-                destination: destination.uppercased(),
-                departureTime: dep1,
-                arrivalTime: arr1,
-                durationMinutes: 105,
-                pricePerPerson: 4200.0,
-                cabinClass: "Economy",
-                stops: 0,
-                isRefundable: true,
-                metadata: meta
-            ),
-            FlightCandidate(
-                airline: "Air India",
-                flightNumber: "AI-465",
-                origin: origin.uppercased(),
-                destination: destination.uppercased(),
-                departureTime: dep2,
-                arrivalTime: arr2,
-                durationMinutes: 105,
-                pricePerPerson: 4850.0,
-                cabinClass: "Economy",
-                stops: 0,
-                isRefundable: true,
-                metadata: meta
-            ),
-            FlightCandidate(
-                airline: "SpiceJet",
-                flightNumber: "SG-8114",
-                origin: origin.uppercased(),
-                destination: destination.uppercased(),
-                departureTime: dep3,
-                arrivalTime: arr3,
-                durationMinutes: 115,
-                pricePerPerson: 3650.0,
-                cabinClass: "Economy",
-                stops: 0,
-                isRefundable: false,
-                metadata: meta
-            )
-        ]
+        let isInternational = ["paris", "tokyo", "dubai", "london", "bali", "singapore", "new york"]
+            .contains { destination.lowercased().contains($0) }
+        
+        if isInternational {
+            return [
+                FlightCandidate(
+                    airline: destination.lowercased().contains("paris") ? "Air France" : (destination.lowercased().contains("tokyo") ? "ANA (All Nippon)" : "Emirates"),
+                    flightNumber: "EK-512",
+                    origin: origin.uppercased(),
+                    destination: destination.uppercased(),
+                    departureTime: dep1,
+                    arrivalTime: arr1.addingTimeInterval(3600 * 5),
+                    durationMinutes: 480,
+                    pricePerPerson: 38500.0,
+                    cabinClass: "Economy",
+                    stops: 0,
+                    isRefundable: true,
+                    metadata: meta
+                ),
+                FlightCandidate(
+                    airline: "Air India (Dreamliner)",
+                    flightNumber: "AI-143",
+                    origin: origin.uppercased(),
+                    destination: destination.uppercased(),
+                    departureTime: dep2,
+                    arrivalTime: arr2.addingTimeInterval(3600 * 6),
+                    durationMinutes: 510,
+                    pricePerPerson: 34200.0,
+                    cabinClass: "Economy",
+                    stops: 0,
+                    isRefundable: true,
+                    metadata: meta
+                ),
+                FlightCandidate(
+                    airline: "Qatar Airways",
+                    flightNumber: "QR-571",
+                    origin: origin.uppercased(),
+                    destination: destination.uppercased(),
+                    departureTime: dep3,
+                    arrivalTime: arr3.addingTimeInterval(3600 * 7),
+                    durationMinutes: 570,
+                    pricePerPerson: 31900.0,
+                    cabinClass: "Economy",
+                    stops: 1,
+                    isRefundable: true,
+                    metadata: meta
+                )
+            ]
+        } else {
+            return [
+                FlightCandidate(
+                    airline: "IndiGo Express",
+                    flightNumber: "6E-2041",
+                    origin: origin.uppercased(),
+                    destination: destination.uppercased(),
+                    departureTime: dep1,
+                    arrivalTime: arr1,
+                    durationMinutes: 105,
+                    pricePerPerson: 4200.0,
+                    cabinClass: "Economy",
+                    stops: 0,
+                    isRefundable: true,
+                    metadata: meta
+                ),
+                FlightCandidate(
+                    airline: "Air India",
+                    flightNumber: "AI-465",
+                    origin: origin.uppercased(),
+                    destination: destination.uppercased(),
+                    departureTime: dep2,
+                    arrivalTime: arr2,
+                    durationMinutes: 105,
+                    pricePerPerson: 4850.0,
+                    cabinClass: "Economy",
+                    stops: 0,
+                    isRefundable: true,
+                    metadata: meta
+                ),
+                FlightCandidate(
+                    airline: "Vistara Premium",
+                    flightNumber: "UK-814",
+                    origin: origin.uppercased(),
+                    destination: destination.uppercased(),
+                    departureTime: dep3,
+                    arrivalTime: arr3,
+                    durationMinutes: 115,
+                    pricePerPerson: 5300.0,
+                    cabinClass: "Economy",
+                    stops: 0,
+                    isRefundable: true,
+                    metadata: meta
+                )
+            ]
+        }
     }
 }
 
@@ -149,34 +199,7 @@ public final class MockTrainSearchProvider: TrainSearchProviderProtocol, @unchec
                 )
             ]
         } else {
-            return [
-                TrainCandidate(
-                    trainNumber: "12431",
-                    trainName: "Rajdhani Superfast Express",
-                    originStation: "\(origin) Central",
-                    destinationStation: "\(destination) Terminal",
-                    departureTime: dep1,
-                    arrivalTime: arr1,
-                    durationMinutes: 360,
-                    pricePerPerson: 1650.0,
-                    seatClass: "3A",
-                    availabilityStatus: "Available (35)",
-                    metadata: meta
-                ),
-                TrainCandidate(
-                    trainNumber: "20901",
-                    trainName: "Vande Bharat Express",
-                    originStation: "\(origin) Junction",
-                    destinationStation: "\(destination) City",
-                    departureTime: dep2,
-                    arrivalTime: arr2,
-                    durationMinutes: 240,
-                    pricePerPerson: 1350.0,
-                    seatClass: "CC",
-                    availabilityStatus: "Available (60)",
-                    metadata: meta
-                )
-            ]
+            return DestinationCatalog.trains(origin: origin, destination: destination, date: date, metadata: meta)
         }
     }
 }
@@ -295,60 +318,7 @@ public final class MockHotelSearchProvider: HotelSearchProviderProtocol, @unchec
                 )
             ]
         } else {
-            // General dynamic destination fallback
-            return [
-                HotelCandidate(
-                    id: "htl-gen-001",
-                    name: "\(destination) City Central Hotel",
-                    address: "Central Square",
-                    city: destination,
-                    coordinates: GeoLocation(latitude: 28.6139, longitude: 77.2090),
-                    starRating: 4.0,
-                    reviewScore: 4.4,
-                    reviewCount: 1100,
-                    pricePerNight: 3500.0,
-                    roomType: "Standard Double Room",
-                    maxCapacityPerRoom: 2,
-                    amenities: ["Free WiFi", "Breakfast Included", "City View"],
-                    isFamilyFriendly: true,
-                    distanceToCenterKm: 1.0,
-                    metadata: meta
-                ),
-                HotelCandidate(
-                    id: "htl-gen-002",
-                    name: "\(destination) Grand Heritage Resort",
-                    address: "Lake View Boulevard",
-                    city: destination,
-                    coordinates: GeoLocation(latitude: 28.6200, longitude: 77.2150),
-                    starRating: 5.0,
-                    reviewScore: 4.8,
-                    reviewCount: 850,
-                    pricePerNight: 8200.0,
-                    roomType: "Deluxe Suite",
-                    maxCapacityPerRoom: 2,
-                    amenities: ["Swimming Pool", "Spa", "Free WiFi", "Restaurant"],
-                    isFamilyFriendly: true,
-                    distanceToCenterKm: 2.5,
-                    metadata: meta
-                ),
-                HotelCandidate(
-                    id: "htl-gen-003",
-                    name: "\(destination) Travelers Pod & Suites",
-                    address: "Station Road",
-                    city: destination,
-                    coordinates: GeoLocation(latitude: 28.6100, longitude: 77.2050),
-                    starRating: 3.0,
-                    reviewScore: 4.1,
-                    reviewCount: 520,
-                    pricePerNight: 1700.0,
-                    roomType: "Group Quad Room",
-                    maxCapacityPerRoom: 4,
-                    amenities: ["Free WiFi", "Shared Lounge", "Lockers"],
-                    isFamilyFriendly: false,
-                    distanceToCenterKm: 0.5,
-                    metadata: meta
-                )
-            ]
+            return DestinationCatalog.hotels(for: destination, guests: guests, metadata: meta)
         }
     }
     
@@ -545,57 +515,7 @@ public final class MockPlaceSearchProvider: PlaceSearchProviderProtocol, @unchec
                 )
             ]
         } else {
-            // Dynamic destination fallback
-            return [
-                PlaceCandidate(
-                    id: "plc-gen-001",
-                    name: "\(destination) Historic Fort & Museum",
-                    category: .historical,
-                    description: "Grand historical citadel representing the architectural zenith of \(destination) with sprawling gardens and royal galleries.",
-                    coordinates: GeoLocation(latitude: 28.6562, longitude: 77.2410),
-                    rating: 4.6,
-                    reviewCount: 5000,
-                    entryFee: 150.0,
-                    estimatedDurationMinutes: 120,
-                    openingHour: 9,
-                    closingHour: 18,
-                    bestSlot: .morning,
-                    suitableForGroups: [.friends, .family, .couple, .solo],
-                    metadata: meta
-                ),
-                PlaceCandidate(
-                    id: "plc-gen-002",
-                    name: "\(destination) Botanic Gardens & Waterfront",
-                    category: .nature,
-                    description: "Tranquil botanical gardens featuring century-old trees, scenic walking paths, and musical fountains.",
-                    coordinates: GeoLocation(latitude: 28.6200, longitude: 77.2100),
-                    rating: 4.5,
-                    reviewCount: 3800,
-                    entryFee: 50.0,
-                    estimatedDurationMinutes: 90,
-                    openingHour: 8,
-                    closingHour: 20,
-                    bestSlot: .afternoon,
-                    suitableForGroups: [.friends, .family, .couple, .solo],
-                    metadata: meta
-                ),
-                PlaceCandidate(
-                    id: "plc-gen-003",
-                    name: "\(destination) Heritage Street Market",
-                    category: .market,
-                    description: "Vibrant marketplace with traditional crafts, spice stalls, artisan textiles, and authentic regional street food.",
-                    coordinates: GeoLocation(latitude: 28.6500, longitude: 77.2300),
-                    rating: 4.7,
-                    reviewCount: 6200,
-                    entryFee: 0.0,
-                    estimatedDurationMinutes: 90,
-                    openingHour: 11,
-                    closingHour: 22,
-                    bestSlot: .evening,
-                    suitableForGroups: [.friends, .family, .couple, .solo],
-                    metadata: meta
-                )
-            ]
+            return DestinationCatalog.places(for: destination, preferences: preferences, metadata: meta)
         }
     }
 }

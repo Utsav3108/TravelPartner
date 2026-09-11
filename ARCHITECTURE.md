@@ -76,8 +76,13 @@ Travel Partner resolves these challenges through a **Hybrid AI Architecture**:
 
 ### Pillar A: Why On-Device ML (Core ML)?
 * **Privacy-First Personalization**: The traveler's sensitive preferences (budget sensitivity, personal pacing, companion demographics) are computed strictly on-device. Raw preference vectors are never dispatched to external cloud endpoints merely to calculate a ranking score.
-* **Deterministic Fallback**: The `CoreMLRecommendationEngine` operates behind a protocol abstraction (`RecommendationEngineProtocol`). When model weights are compiling or unbundled, the engine seamlessly delegates to a Multi-Criteria Decision Analysis (MCDA) utility scorer, ensuring zero crashes.
-* **Explainability Without Score Leaks**: The ranking pipeline translates numeric utility scores into clear, human-readable explanations (`RecommendationRationale`), such as *"Fits comfortably within your ₹50,000 budget"* and *"Accommodates all 4 friends across 2 rooms"*, rather than confusing users with raw probabilities.
+* **Three Dedicated On-Device Models**: The `CoreMLModelManager` manages three distinct Core ML regressors compiled on-device:
+  1. `HotelRankingModel`: Evaluates budget consumption ratios, traveler ratings, distance to center, room capacity equations, and amenity profiles.
+  2. `PlaceRankingModel`: Scores attractions against traveler interest vectors, group dynamic safety, time slots, and admission costs.
+  3. `TransportRankingModel`: Analyzes duration trade-offs, transfer penalties, budget fractions, and travel mode preferences.
+* **Feedback-Aware Ranking**: Incorporates user feedback signals from `FeedbackRepositoryProtocol` (`likedItemIds` / `dislikedItemIds`) to personalize future candidate scores.
+* **Deterministic Fallback**: When model files are compiling or in unsupported environments, `CoreMLRecommendationEngine` seamlessly delegates to `DeterministicRankingEngine` (Multi-Criteria Decision Analysis utility scorer), ensuring zero crashes.
+* **Explainability Without Score Leaks**: The ranking pipeline translates numeric ML scores into clear, human-readable explanations (`RecommendationRationale`), such as *"Core ML on-device rating: 92% group match"* and *"Accommodates all 4 friends across 2 rooms"*, rather than confusing users with raw probabilities.
 
 ### Pillar B: Why Firebase is Not the Source of Truth for Travel Data
 A critical architectural pitfall is treating the application database as the authoritative provider of travel availability. 
@@ -88,11 +93,12 @@ A critical architectural pitfall is treating the application database as the aut
   3. Recommendation Feedback Signals (`/users/{userId}/feedback/{feedbackId}`)
 * **Cache Invalidation**: While external search results can be temporarily cached in an in-memory actor (`TravelDataCacheActor`), cached results are explicitly flagged (`CandidateMetadata.isFresh`) and must be revalidated prior to critical user actions.
 
-### Pillar C: Why Gemini?
-Gemini is deployed as a **reasoning and communicative interface** over structured candidates, rather than an unconstrained search engine:
-* **Natural-Language Understanding (NLU)**: Parses unstructured free-form prompts (e.g. *"I want to go to Shimla for 5 days with 4 friends. Total budget is ₹50,000."*) into validated domain entities (`TripRequest`).
-* **Grounded Synthesis**: When generating daily narratives and local tips, Gemini is supplied with strict JSON candidate payloads. System instructions prevent the model from inventing non-existent airlines, phantom trains, or unverified hotel discounts.
-* **Conversational Modifications**: When a user commands *"Make this cheaper"* or *"Switch to a scenic train"*, Gemini reasons over the pre-filtered candidate pool to recommend genuine alternatives rather than hallucinating lower prices.
+### Pillar C: Generative AI via Firebase AI SDK (Google Gemini)
+Gemini is integrated via the official **Firebase AI SDK** (`FirebaseAI` / Firebase AI Logic) as a **reasoning and communicative interface** over structured candidates, rather than an unconstrained search engine:
+* **Natural-Language Understanding (NLU)**: Parses unstructured free-form prompts (e.g. *"I want to go to Shimla for 5 days with 4 friends. Total budget is ₹50,000."*) into validated domain entities (`TripRequest`) using structured JSON generation schema (`GenerationConfig(responseMIMEType: "application/json")`).
+* **Grounded Synthesis & Streaming**: When generating daily narratives and local tips, Gemini is supplied with strict JSON candidate payloads. System instructions prevent the model from inventing non-existent airlines, phantom trains, or unverified hotel discounts. Real-time streaming (`generateItineraryNarrativeStream`) provides responsive UI feedback.
+* **Conversational Modifications**: When a user commands *"Make this cheaper"* or *"Switch to a scenic train"*, Gemini reasons over the genuine pre-filtered candidate pool (`candidatePool`) to recommend verified candidate IDs (`selectedHotelId`, `selectedTransportId`) rather than hallucinating lower prices.
+* **Resilient Hybrid Facade (`HybridGeminiService`)**: Dynamically routes between the live Firebase AI SDK client (`FirebaseGeminiService`), direct REST API (`GeminiAPIService`), and an intelligent offline engine (`FallbackGeminiService`).
 
 ### Pillar D: Swift Concurrency & Data-Race Safety
 Built in Swift 6 mode, the concurrency architecture enforces strict safety guarantees:

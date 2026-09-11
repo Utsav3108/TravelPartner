@@ -33,23 +33,63 @@ public struct ProfileView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
+                        Text("Active Engine: \(viewModel.aiEngineStatus)")
+                            .font(.caption2)
+                            .foregroundColor(.indigo)
+                            .fontWeight(.medium)
+                        
                         SecureField("Paste new Gemini API key", text: $viewModel.newGeminiApiKey)
                             .textFieldStyle(.roundedBorder)
                         
-                        HStack {
+                        HStack(spacing: 8) {
                             Button("Save Key") {
                                 viewModel.saveGeminiKey()
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(viewModel.newGeminiApiKey.isEmpty)
                             
+                            Button {
+                                Task {
+                                    await viewModel.testCloudConnection()
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    if viewModel.isTestingConnection {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                    } else {
+                                        Image(systemName: "bolt.horizontal.fill")
+                                    }
+                                    Text("Test Connection")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(viewModel.isTestingConnection)
+                            
                             if viewModel.isKeyConfigured {
-                                Button("Remove Key") {
+                                Button("Remove") {
                                     viewModel.clearGeminiKey()
                                 }
                                 .buttonStyle(.bordered)
                                 .foregroundColor(.red)
                             }
+                        }
+                        
+                        if let testMsg = viewModel.connectionTestMessage {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(alignment: .top, spacing: 6) {
+                                    Image(systemName: viewModel.connectionTestIsSuccess ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                        .foregroundColor(viewModel.connectionTestIsSuccess ? .green : .orange)
+                                    Text(testMsg)
+                                        .font(.caption2)
+                                        .foregroundColor(viewModel.connectionTestIsSuccess ? .primary : .orange)
+                                }
+                            }
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(viewModel.connectionTestIsSuccess ? Color.green.opacity(0.1) : Color.orange.opacity(0.12))
+                            )
                         }
                         
                         if let feedback = viewModel.saveFeedback {
@@ -124,7 +164,11 @@ public struct ProfileView: View {
                 } header: {
                     Text("Engine Runtime Modes")
                 } footer: {
-                    Text("Core ML executes candidate ranking on-device to protect personal preference privacy.")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Core ML executes candidate ranking on-device to protect personal preference privacy.")
+                        Text("Status: \(viewModel.coreMLStatus)")
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 // Section 4: System Architecture & Diagnostics

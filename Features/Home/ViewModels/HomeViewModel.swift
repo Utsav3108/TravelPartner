@@ -24,7 +24,56 @@ public final class HomeViewModel {
     private let geminiService: GeminiServiceProtocol
     private let tripRepository: TripRepositoryProtocol
     
+    public struct PromptInspiration: Identifiable, Sendable {
+        public let id = UUID()
+        public let title: String
+        public let prompt: String
+        public let icon: String
+    }
+    
+    public let inspirations: [PromptInspiration] = [
+        PromptInspiration(
+            title: "Goa Beach & Sun",
+            prompt: "Plan a 4-day beach vacation to Goa for 4 friends with a budget of ₹45,000. We want water sports, beach shacks, and vibrant sunsets.",
+            icon: "sun.max.fill"
+        ),
+        PromptInspiration(
+            title: "Shimla Heritage Train",
+            prompt: "I want to go to Shimla for 5 days with 4 friends. My total budget is ₹50,000. Include toy train and mountain walks.",
+            icon: "mountain.2.fill"
+        ),
+        PromptInspiration(
+            title: "Royal Jaipur Forts",
+            prompt: "3-day royal heritage trip to Jaipur for a couple with ₹35,000 budget. Include Amber Fort, Hawa Mahal, and traditional dining.",
+            icon: "crown.fill"
+        ),
+        PromptInspiration(
+            title: "Manali Alpine Snow",
+            prompt: "6-day mountain adventure to Manali for 2 travelers with ₹45,000 budget. Looking for Solang Valley snow sports and trekking.",
+            icon: "snowflake"
+        ),
+        PromptInspiration(
+            title: "Kerala Backwaters",
+            prompt: "5-day family trip to Kerala with ₹52,000 budget. Include Alleppey houseboat, Munnar tea estates, and local seafood.",
+            icon: "water.waves"
+        ),
+        PromptInspiration(
+            title: "Paris Art & Romance",
+            prompt: "4 days romantic vacation to Paris for 2 with $2,500 budget. Include Eiffel Tower, Louvre, and a Seine river cruise.",
+            icon: "sparkles"
+        )
+    ]
+    
     public let featuredDestinations: [FeaturedDestination] = [
+        FeaturedDestination(
+            name: "Goa",
+            subtitle: "Coastal Sunsets, Beaches & Portuguese Architecture",
+            defaultOrigin: "Mumbai",
+            suggestedBudget: 45000.0,
+            suggestedDays: 4,
+            tags: ["Beaches", "Nightlife", "Cuisine"],
+            iconName: "sun.max.fill"
+        ),
         FeaturedDestination(
             name: "Shimla",
             subtitle: "Queen of the Hills • Colonial Heritage & Himalayan Vistas",
@@ -44,15 +93,6 @@ public final class HomeViewModel {
             iconName: "snowflake"
         ),
         FeaturedDestination(
-            name: "Goa",
-            subtitle: "Coastal Sunsets, Beaches & Portuguese Architecture",
-            defaultOrigin: "Mumbai",
-            suggestedBudget: 45000.0,
-            suggestedDays: 4,
-            tags: ["Beaches", "Nightlife", "Cuisine"],
-            iconName: "sun.max.fill"
-        ),
-        FeaturedDestination(
             name: "Jaipur",
             subtitle: "The Pink City • Majestic Forts & Royal Palaces",
             defaultOrigin: "Delhi",
@@ -60,6 +100,24 @@ public final class HomeViewModel {
             suggestedDays: 3,
             tags: ["Palaces", "Culture", "Handicrafts"],
             iconName: "crown.fill"
+        ),
+        FeaturedDestination(
+            name: "Kerala",
+            subtitle: "God's Own Country • Emerald Backwaters & Misty Tea Hills",
+            defaultOrigin: "Bangalore",
+            suggestedBudget: 52000.0,
+            suggestedDays: 5,
+            tags: ["Houseboats", "Tea Gardens", "Ayurveda"],
+            iconName: "water.waves"
+        ),
+        FeaturedDestination(
+            name: "Paris",
+            subtitle: "City of Light • World-Class Art, History & Haute Cuisine",
+            defaultOrigin: "Delhi",
+            suggestedBudget: 180000.0,
+            suggestedDays: 5,
+            tags: ["Museums", "Landmarks", "Romantic"],
+            iconName: "sparkles"
         )
     ]
     

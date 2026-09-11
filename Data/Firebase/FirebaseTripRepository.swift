@@ -21,6 +21,7 @@ public final class FirebaseTripRepository: TripRepositoryProtocol, Sendable {
     
     public init(fallbackRepository: LocalFirebaseEmulatedRepository = .shared) {
         self.fallbackRepository = fallbackRepository
+        AppConfiguration.shared.configureFirebaseIfNeeded()
     }
     
     public func saveTrip(_ itinerary: TripItinerary, for userId: String) async throws {

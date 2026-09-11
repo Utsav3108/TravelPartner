@@ -78,6 +78,44 @@ public struct HomeView: View {
                                 .foregroundColor(.red)
                         }
                         
+                        // Inspiration Chips
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("TRY AN IDEA")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.secondary)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(viewModel.inspirations) { item in
+                                        Button {
+                                            viewModel.promptText = item.prompt
+                                        } label: {
+                                            HStack(spacing: 5) {
+                                                Image(systemName: item.icon)
+                                                    .font(.caption2)
+                                                Text(item.title)
+                                                    .font(.caption2)
+                                                    .fontWeight(.medium)
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(
+                                                Capsule()
+                                                    .fill(viewModel.promptText == item.prompt ? Color.blue.opacity(0.18) : Color.secondary.opacity(0.08))
+                                            )
+                                            .overlay(
+                                                Capsule()
+                                                    .stroke(viewModel.promptText == item.prompt ? Color.blue : Color.secondary.opacity(0.2), lineWidth: 1)
+                                            )
+                                            .foregroundColor(viewModel.promptText == item.prompt ? .blue : .primary)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 2)
+                        
                         HStack(spacing: 12) {
                             Button {
                                 Task {

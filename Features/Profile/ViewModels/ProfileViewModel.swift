@@ -11,6 +11,8 @@ public final class ProfileViewModel {
     public var searchMode: AppConfiguration.SearchMode = .mock
     public var mlMode: AppConfiguration.MLEngineMode = .hybridCoreML
     public var saveFeedback: String? = nil
+    public var aiEngineStatus: String = ""
+    public var coreMLStatus: String = ""
     
     private let config = AppConfiguration.shared
     private let userRepository: UserRepositoryProtocol
@@ -25,6 +27,13 @@ public final class ProfileViewModel {
         self.maskedKeyString = config.maskedGeminiKey
         self.searchMode = config.searchMode
         self.mlMode = config.mlMode
+        self.aiEngineStatus = config.aiEngineStatusDescription
+        #if canImport(CoreML)
+        let manager = CoreMLModelManager.shared
+        self.coreMLStatus = manager.areAllModelsLoaded ? "3 Core ML Models Active (Hotels, Places, Transit)" : "Core ML Ready (On-Demand Loading)"
+        #else
+        self.coreMLStatus = "Core ML Not Supported on this Platform"
+        #endif
     }
     
     public func saveGeminiKey() {
@@ -35,10 +44,26 @@ public final class ProfileViewModel {
         saveFeedback = "Gemini API key updated successfully!"
     }
     
+    public var isTestingConnection: Bool = false
+    public var connectionTestMessage: String? = nil
+    public var connectionTestIsSuccess: Bool = false
+    
+    public func testCloudConnection() async {
+        isTestingConnection = true
+        connectionTestMessage = nil
+        let hybrid = HybridGeminiService()
+        let (isLive, title, message) = await hybrid.testCloudConnection()
+        self.connectionTestIsSuccess = isLive
+        self.connectionTestMessage = "\(title): \(message)"
+        self.isTestingConnection = false
+        refreshConfig()
+    }
+    
     public func clearGeminiKey() {
         config.clearGeminiApiKey()
         refreshConfig()
         saveFeedback = "Gemini key removed. Offline AI fallback is active."
+        connectionTestMessage = nil
     }
     
     public func updateSearchMode(_ mode: AppConfiguration.SearchMode) {

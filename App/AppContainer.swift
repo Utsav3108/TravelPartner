@@ -40,7 +40,7 @@ public final class AppContainer: @unchecked Sendable {
         weatherSearchProvider: WeatherSearchProviderProtocol = MockWeatherSearchProvider(),
         travelSearchService: TravelSearchServiceProtocol? = nil,
         constraintEngine: ConstraintEngineProtocol = ConstraintEngine(),
-        recommendationEngine: RecommendationEngineProtocol = CoreMLRecommendationEngine(),
+        recommendationEngine: RecommendationEngineProtocol? = nil,
         itineraryOptimizer: ItineraryOptimizerProtocol = ItineraryOptimizer(),
         geminiService: GeminiServiceProtocol = HybridGeminiService()
     ) {
@@ -64,14 +64,15 @@ public final class AppContainer: @unchecked Sendable {
         self.travelSearchService = searchService
         
         self.constraintEngine = constraintEngine
-        self.recommendationEngine = recommendationEngine
+        let mlEngine = recommendationEngine ?? CoreMLRecommendationEngine(feedbackRepository: feedbackRepository)
+        self.recommendationEngine = mlEngine
         self.itineraryOptimizer = itineraryOptimizer
         self.geminiService = geminiService
         
         self.tripPlanningService = TripPlanningCoordinator(
             travelSearchService: searchService,
             constraintEngine: constraintEngine,
-            recommendationEngine: recommendationEngine,
+            recommendationEngine: mlEngine,
             itineraryOptimizer: itineraryOptimizer,
             geminiService: geminiService,
             tripRepository: tripRepository

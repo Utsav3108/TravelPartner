@@ -42,6 +42,7 @@
 		92103971B71852E58AF0F47A /* TravelErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C2F92A1F298D07AA580D36 /* TravelErrors.swift */; };
 		926B88D1C63C510567658CBC /* TripWizardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA59F17C7B8052B39D71D25 /* TripWizardViewModel.swift */; };
 		949DAF25999C63DE4F1FDB9C /* MockTravelProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99A340550F85CDAC0838651 /* MockTravelProviders.swift */; };
+		D1A000012C8899AA00000001 /* DestinationCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000022C8899AA00000002 /* DestinationCatalog.swift */; };
 		9BC5FCDE71225843040CEA4F /* TravelPartnerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A6AB5BF2F02AC045EF48498 /* TravelPartnerApp.swift */; };
 		A40D1BB9FF34EBCADAF1D93F /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61691837FAA7357A0093AE2A /* MainTabView.swift */; };
 		A4C7F15990AA46E274100D28 /* LiveTravelSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB5D263315E70FEA686B3D1 /* LiveTravelSearchService.swift */; };
@@ -51,6 +52,7 @@
 		AE52195E07096F195B45F8BE /* TripRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDDEBC82B5BBB576FD68B49 /* TripRequestTests.swift */; };
 		B905BB24AB6A515E5C9686F3 /* GroupRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A63FB43B85E15AAEF7EC65 /* GroupRules.swift */; };
 		BB6926F40B31C13DCC9FCCFD /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A98A8D12AAAE9D910CAC37 /* AppEnvironment.swift */; };
+		C31EB4243053D5FB00D58FD7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C31EB4233053D5FB00D58FD7 /* GoogleService-Info.plist */; };
 		C985F53163D10DC10CC497BF /* Candidates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FB0AED529A115939598922 /* Candidates.swift */; };
 		D2E7AA3D4C4A1B19528EE453 /* CandidateMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9287B6270FB03A9703E5FFA7 /* CandidateMetadata.swift */; };
 		DA015D2D776D02ABF3F411CD /* Repositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83877CF5EC47E7A55DE79A76 /* Repositories.swift */; };
@@ -113,6 +115,7 @@
 		B1ABC18F3FADB5A14E6149C7 /* LocalFirebaseEmulatedRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFirebaseEmulatedRepository.swift; sourceTree = "<group>"; };
 		B2A63FB43B85E15AAEF7EC65 /* GroupRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupRules.swift; sourceTree = "<group>"; };
 		BEB3D2DA8A848A64DCCC6EFC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C31EB4233053D5FB00D58FD7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		C62ED7933F748F0B1933A7A0 /* TripRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRequest.swift; sourceTree = "<group>"; };
 		C6B3B9B42C7DBFFDDB83D253 /* RecommendationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendationEngine.swift; sourceTree = "<group>"; };
 		C79C446D198946E9ABA2F3B9 /* TravelPartnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TravelPartnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -124,6 +127,7 @@
 		D706DFAEF3F71EC55BAA105D /* TravelPartnerCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelPartnerCoreTests.swift; sourceTree = "<group>"; };
 		D8066F10E24AEDEAB88662A5 /* TripWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripWizardView.swift; sourceTree = "<group>"; };
 		D99A340550F85CDAC0838651 /* MockTravelProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTravelProviders.swift; sourceTree = "<group>"; };
+		D1A000022C8899AA00000002 /* DestinationCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationCatalog.swift; sourceTree = "<group>"; };
 		DBA59F17C7B8052B39D71D25 /* TripWizardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripWizardViewModel.swift; sourceTree = "<group>"; };
 		DC7B7A0A6C37585759156CA3 /* FirebaseTripRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseTripRepository.swift; sourceTree = "<group>"; };
 		E64F3B6272E29D97DCA5C3B2 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -315,6 +319,7 @@
 				EFB5D263315E70FEA686B3D1 /* LiveTravelSearchService.swift */,
 				701B90AACCBD6AFCF9DFEF69 /* TravelSearchProviders.swift */,
 				D99A340550F85CDAC0838651 /* MockTravelProviders.swift */,
+				D1A000022C8899AA00000002 /* DestinationCatalog.swift */,
 				5090BCFE1C2774C8F606D669 /* TravelDataCacheActor.swift */,
 			);
 			path = Remote;
@@ -440,6 +445,7 @@
 				9A6AB5BF2F02AC045EF48498 /* TravelPartnerApp.swift */,
 				EA8184AB99520780EA38DE62 /* AppContainer.swift */,
 				98A98A8D12AAAE9D910CAC37 /* AppEnvironment.swift */,
+				C31EB4233053D5FB00D58FD7 /* GoogleService-Info.plist */,
 				36291340F8E26B93BEB58318 /* Info.plist */,
 				BEB3D2DA8A848A64DCCC6EFC /* Assets.xcassets */,
 			);
@@ -538,6 +544,9 @@
 				Base,
 			);
 			mainGroup = 88A7F4E4F1F443AB82C72BA0;
+			packageReferences = (
+				C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			productRefGroup = 08B6CB2ED2A44721BDC7D59A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -554,6 +563,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5661C5C6DBE3538DFDDC7553 /* Assets.xcassets in Resources */,
+				C31EB4243053D5FB00D58FD7 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -596,6 +606,7 @@
 				A4C7F15990AA46E274100D28 /* LiveTravelSearchService.swift in Sources */,
 				34040FE01558B7CBBA1898DB /* TravelSearchProviders.swift in Sources */,
 				949DAF25999C63DE4F1FDB9C /* MockTravelProviders.swift in Sources */,
+				D1A000012C8899AA00000001 /* DestinationCatalog.swift in Sources */,
 				48DB3A86207302161348B571 /* TravelDataCacheActor.swift in Sources */,
 				519F5E14A2765193BC64AA36 /* FirebaseTripRepository.swift in Sources */,
 				DA015D2D776D02ABF3F411CD /* Repositories.swift in Sources */,
@@ -780,6 +791,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.19.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 6A4D6BCFB5C0425BA8A4A8DB /* Project object */;
 }
