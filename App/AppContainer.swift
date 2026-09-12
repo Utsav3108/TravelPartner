@@ -15,6 +15,7 @@ public final class AppContainer: @unchecked Sendable {
     public let feedbackRepository: FeedbackRepositoryProtocol
     
     // Live Search Providers
+    @available(*, deprecated, message: "Flight search is out of scope. Use TrainSearchProviderProtocol instead.")
     public let flightSearchProvider: FlightSearchProviderProtocol
     public let trainSearchProvider: TrainSearchProviderProtocol
     public let hotelSearchProvider: HotelSearchProviderProtocol
@@ -34,10 +35,10 @@ public final class AppContainer: @unchecked Sendable {
         userRepository: UserRepositoryProtocol = LocalFirebaseEmulatedRepository.shared,
         feedbackRepository: FeedbackRepositoryProtocol = LocalFirebaseEmulatedRepository.shared,
         flightSearchProvider: FlightSearchProviderProtocol = MockFlightSearchProvider(),
-        trainSearchProvider: TrainSearchProviderProtocol = MockTrainSearchProvider(),
+        trainSearchProvider: TrainSearchProviderProtocol = RailRadarTrainSearchProvider(),
         hotelSearchProvider: HotelSearchProviderProtocol = MockHotelSearchProvider(),
-        placeSearchProvider: PlaceSearchProviderProtocol = MockPlaceSearchProvider(),
-        weatherSearchProvider: WeatherSearchProviderProtocol = MockWeatherSearchProvider(),
+        placeSearchProvider: PlaceSearchProviderProtocol = WikipediaPlaceSearchProvider(),
+        weatherSearchProvider: WeatherSearchProviderProtocol = OpenWeatherSearchProvider(),
         travelSearchService: TravelSearchServiceProtocol? = nil,
         constraintEngine: ConstraintEngineProtocol = ConstraintEngine(),
         recommendationEngine: RecommendationEngineProtocol? = nil,

@@ -42,18 +42,27 @@
 		92103971B71852E58AF0F47A /* TravelErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C2F92A1F298D07AA580D36 /* TravelErrors.swift */; };
 		926B88D1C63C510567658CBC /* TripWizardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA59F17C7B8052B39D71D25 /* TripWizardViewModel.swift */; };
 		949DAF25999C63DE4F1FDB9C /* MockTravelProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99A340550F85CDAC0838651 /* MockTravelProviders.swift */; };
-		D1A000012C8899AA00000001 /* DestinationCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000022C8899AA00000002 /* DestinationCatalog.swift */; };
 		9BC5FCDE71225843040CEA4F /* TravelPartnerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A6AB5BF2F02AC045EF48498 /* TravelPartnerApp.swift */; };
 		A40D1BB9FF34EBCADAF1D93F /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61691837FAA7357A0093AE2A /* MainTabView.swift */; };
 		A4C7F15990AA46E274100D28 /* LiveTravelSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB5D263315E70FEA686B3D1 /* LiveTravelSearchService.swift */; };
 		A669D8B2C8B8CC262EC2685E /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F381E12053FE5AB368863888 /* HomeViewModel.swift */; };
 		A6D0E6F4714825FCCC728E26 /* TripConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3CD3D2A96DBD082CE82C026 /* TripConstraints.swift */; };
+		AA0100010000000000000011 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0100010000000000000002 /* AppLogger.swift */; };
+		AA0100010000000000000012 /* LiveLogsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0100010000000000000003 /* LiveLogsView.swift */; };
+		AA0100010000000000000013 /* AppLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0100010000000000000004 /* AppLoggerTests.swift */; };
 		AC013B5469B6962FA8BE4A68 /* SavedTripsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6224BAD5F42E3E509228D919 /* SavedTripsViewModel.swift */; };
 		AE52195E07096F195B45F8BE /* TripRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDDEBC82B5BBB576FD68B49 /* TripRequestTests.swift */; };
 		B905BB24AB6A515E5C9686F3 /* GroupRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A63FB43B85E15AAEF7EC65 /* GroupRules.swift */; };
 		BB6926F40B31C13DCC9FCCFD /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A98A8D12AAAE9D910CAC37 /* AppEnvironment.swift */; };
 		C31EB4243053D5FB00D58FD7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C31EB4233053D5FB00D58FD7 /* GoogleService-Info.plist */; };
 		C985F53163D10DC10CC497BF /* Candidates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FB0AED529A115939598922 /* Candidates.swift */; };
+		D1A000012C8899AA00000001 /* DestinationCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000022C8899AA00000002 /* DestinationCatalog.swift */; };
+		D1A000102C8899AA00000010 /* OpenMeteoWeatherProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000112C8899AA00000011 /* OpenMeteoWeatherProvider.swift */; };
+		D1A000122C8899AA00000012 /* WikipediaPlaceSearchProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000132C8899AA00000013 /* WikipediaPlaceSearchProvider.swift */; };
+		D1A000202C8899AA00000020 /* OpenWeatherProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000212C8899AA00000021 /* OpenWeatherProvider.swift */; };
+		D1A000222C8899AA00000022 /* RailRadarProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000232C8899AA00000023 /* RailRadarProvider.swift */; };
+		D1A000242C8899AA00000024 /* IndianRailwayStations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000252C8899AA00000025 /* IndianRailwayStations.swift */; };
+		D1A000262C8899AA00000026 /* StationPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000272C8899AA00000027 /* StationPickerSheet.swift */; };
 		D2E7AA3D4C4A1B19528EE453 /* CandidateMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9287B6270FB03A9703E5FFA7 /* CandidateMetadata.swift */; };
 		DA015D2D776D02ABF3F411CD /* Repositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83877CF5EC47E7A55DE79A76 /* Repositories.swift */; };
 		DA65B28C6B4DDF611EAA6E4B /* RationaleCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 352324BBAFECBFFDDE2FD907 /* RationaleCardView.swift */; };
@@ -63,6 +72,7 @@
 		F20FC45DBAC039E3CC3878ED /* TripResultViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3F0B4AF4C1319A2478F86D /* TripResultViewModel.swift */; };
 		F6432694CF561EA2525715B6 /* TravelPartnerCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D706DFAEF3F71EC55BAA105D /* TravelPartnerCoreTests.swift */; };
 		F6C45629BFEDEE6AF2042A8F /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D23676BEE5ED853141E958E /* GeminiService.swift */; };
+		6FA98C113054AB82000635D9 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6FA98C103054AB82000635D8 /* Secrets.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -98,6 +108,7 @@
 		61691837FAA7357A0093AE2A /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		6224BAD5F42E3E509228D919 /* SavedTripsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedTripsViewModel.swift; sourceTree = "<group>"; };
 		6A9F1186A108A1FB80F51C31 /* GeminiServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiServiceTests.swift; sourceTree = "<group>"; };
+		6FA98C103054AB82000635D8 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
 		701B90AACCBD6AFCF9DFEF69 /* TravelSearchProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelSearchProviders.swift; sourceTree = "<group>"; };
 		711C6602AAE5D361D076A31F /* TripPlanningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlanningService.swift; sourceTree = "<group>"; };
 		7BDDEBC82B5BBB576FD68B49 /* TripRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRequestTests.swift; sourceTree = "<group>"; };
@@ -112,6 +123,9 @@
 		98A98A8D12AAAE9D910CAC37 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		9A6AB5BF2F02AC045EF48498 /* TravelPartnerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelPartnerApp.swift; sourceTree = "<group>"; };
 		9C5ED477042BB0C68B43E6A5 /* ItineraryOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItineraryOptimizer.swift; sourceTree = "<group>"; };
+		AA0100010000000000000002 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
+		AA0100010000000000000003 /* LiveLogsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveLogsView.swift; sourceTree = "<group>"; };
+		AA0100010000000000000004 /* AppLoggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLoggerTests.swift; sourceTree = "<group>"; };
 		B1ABC18F3FADB5A14E6149C7 /* LocalFirebaseEmulatedRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFirebaseEmulatedRepository.swift; sourceTree = "<group>"; };
 		B2A63FB43B85E15AAEF7EC65 /* GroupRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupRules.swift; sourceTree = "<group>"; };
 		BEB3D2DA8A848A64DCCC6EFC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -123,11 +137,17 @@
 		CA292867C2E2864E802D6268 /* Itinerary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Itinerary.swift; sourceTree = "<group>"; };
 		D0A7ABCFCA7044C60AEAD629 /* TripPlanningViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlanningViewModel.swift; sourceTree = "<group>"; };
 		D168072941C1AC14A7F0E8EC /* RecommendationEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendationEngineTests.swift; sourceTree = "<group>"; };
+		D1A000022C8899AA00000002 /* DestinationCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationCatalog.swift; sourceTree = "<group>"; };
+		D1A000112C8899AA00000011 /* OpenMeteoWeatherProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenMeteoWeatherProvider.swift; sourceTree = "<group>"; };
+		D1A000132C8899AA00000013 /* WikipediaPlaceSearchProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikipediaPlaceSearchProvider.swift; sourceTree = "<group>"; };
+		D1A000212C8899AA00000021 /* OpenWeatherProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenWeatherProvider.swift; sourceTree = "<group>"; };
+		D1A000232C8899AA00000023 /* RailRadarProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RailRadarProvider.swift; sourceTree = "<group>"; };
+		D1A000252C8899AA00000025 /* IndianRailwayStations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndianRailwayStations.swift; sourceTree = "<group>"; };
+		D1A000272C8899AA00000027 /* StationPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationPickerSheet.swift; sourceTree = "<group>"; };
 		D3CD3D2A96DBD082CE82C026 /* TripConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripConstraints.swift; sourceTree = "<group>"; };
 		D706DFAEF3F71EC55BAA105D /* TravelPartnerCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelPartnerCoreTests.swift; sourceTree = "<group>"; };
 		D8066F10E24AEDEAB88662A5 /* TripWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripWizardView.swift; sourceTree = "<group>"; };
 		D99A340550F85CDAC0838651 /* MockTravelProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTravelProviders.swift; sourceTree = "<group>"; };
-		D1A000022C8899AA00000002 /* DestinationCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationCatalog.swift; sourceTree = "<group>"; };
 		DBA59F17C7B8052B39D71D25 /* TripWizardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripWizardViewModel.swift; sourceTree = "<group>"; };
 		DC7B7A0A6C37585759156CA3 /* FirebaseTripRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseTripRepository.swift; sourceTree = "<group>"; };
 		E64F3B6272E29D97DCA5C3B2 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -320,6 +340,11 @@
 				701B90AACCBD6AFCF9DFEF69 /* TravelSearchProviders.swift */,
 				D99A340550F85CDAC0838651 /* MockTravelProviders.swift */,
 				D1A000022C8899AA00000002 /* DestinationCatalog.swift */,
+				D1A000112C8899AA00000011 /* OpenMeteoWeatherProvider.swift */,
+				D1A000132C8899AA00000013 /* WikipediaPlaceSearchProvider.swift */,
+				D1A000212C8899AA00000021 /* OpenWeatherProvider.swift */,
+				D1A000232C8899AA00000023 /* RailRadarProvider.swift */,
+				D1A000252C8899AA00000025 /* IndianRailwayStations.swift */,
 				5090BCFE1C2774C8F606D669 /* TravelDataCacheActor.swift */,
 			);
 			path = Remote;
@@ -345,6 +370,7 @@
 		83561FE31DE352CF1AA55642 /* Configuration */ = {
 			isa = PBXGroup;
 			children = (
+				6FA98C103054AB82000635D8 /* Secrets.plist */,
 				470B179E325781617F95B734 /* AppConfiguration.swift */,
 				5117BBB55C03D452C0839220 /* Secrets.example */,
 				7E7D5D60051A07A4E3AC7637 /* Secrets.example.xcconfig */,
@@ -386,6 +412,15 @@
 			path = Features;
 			sourceTree = "<group>";
 		};
+		AA0100010000000000000001 /* Logging */ = {
+			isa = PBXGroup;
+			children = (
+				AA0100010000000000000002 /* AppLogger.swift */,
+				AA0100010000000000000003 /* LiveLogsView.swift */,
+			);
+			path = Logging;
+			sourceTree = "<group>";
+		};
 		ABE1622F7D87723CF8DDA15F /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
@@ -408,6 +443,7 @@
 				3A3976E2E5CE97DDEAF545DB /* ItineraryOptimizerTests.swift */,
 				7BDDEBC82B5BBB576FD68B49 /* TripRequestTests.swift */,
 				D706DFAEF3F71EC55BAA105D /* TravelPartnerCoreTests.swift */,
+				AA0100010000000000000004 /* AppLoggerTests.swift */,
 			);
 			path = TravelPartnerCoreTests;
 			sourceTree = "<group>";
@@ -417,6 +453,7 @@
 			children = (
 				D893723842785C94B6717501 /* Components */,
 				94BF650A167F9A1A6117BE0A /* Errors */,
+				AA0100010000000000000001 /* Logging */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -458,6 +495,7 @@
 				61691837FAA7357A0093AE2A /* MainTabView.swift */,
 				C8EAF5538151A8B8AAFADC0F /* FreshnessBadgeView.swift */,
 				352324BBAFECBFFDDE2FD907 /* RationaleCardView.swift */,
+				D1A000272C8899AA00000027 /* StationPickerSheet.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -564,6 +602,7 @@
 			files = (
 				5661C5C6DBE3538DFDDC7553 /* Assets.xcassets in Resources */,
 				C31EB4243053D5FB00D58FD7 /* GoogleService-Info.plist in Resources */,
+				6FA98C113054AB82000635D9 /* Secrets.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -607,6 +646,12 @@
 				34040FE01558B7CBBA1898DB /* TravelSearchProviders.swift in Sources */,
 				949DAF25999C63DE4F1FDB9C /* MockTravelProviders.swift in Sources */,
 				D1A000012C8899AA00000001 /* DestinationCatalog.swift in Sources */,
+				D1A000102C8899AA00000010 /* OpenMeteoWeatherProvider.swift in Sources */,
+				D1A000122C8899AA00000012 /* WikipediaPlaceSearchProvider.swift in Sources */,
+				D1A000202C8899AA00000020 /* OpenWeatherProvider.swift in Sources */,
+				D1A000222C8899AA00000022 /* RailRadarProvider.swift in Sources */,
+				D1A000242C8899AA00000024 /* IndianRailwayStations.swift in Sources */,
+				D1A000262C8899AA00000026 /* StationPickerSheet.swift in Sources */,
 				48DB3A86207302161348B571 /* TravelDataCacheActor.swift in Sources */,
 				519F5E14A2765193BC64AA36 /* FirebaseTripRepository.swift in Sources */,
 				DA015D2D776D02ABF3F411CD /* Repositories.swift in Sources */,
@@ -619,6 +664,8 @@
 				27AB9EBFDDD77AEC5FD454CA /* FreshnessBadgeView.swift in Sources */,
 				DA65B28C6B4DDF611EAA6E4B /* RationaleCardView.swift in Sources */,
 				92103971B71852E58AF0F47A /* TravelErrors.swift in Sources */,
+				AA0100010000000000000011 /* AppLogger.swift in Sources */,
+				AA0100010000000000000012 /* LiveLogsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -635,6 +682,7 @@
 				42A8810A4B47732140C047CC /* ItineraryOptimizerTests.swift in Sources */,
 				AE52195E07096F195B45F8BE /* TripRequestTests.swift in Sources */,
 				F6432694CF561EA2525715B6 /* TravelPartnerCoreTests.swift in Sources */,
+				AA0100010000000000000013 /* AppLoggerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

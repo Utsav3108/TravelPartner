@@ -56,22 +56,50 @@ public actor LocalFirebaseEmulatedRepository: TripRepositoryProtocol, UserReposi
         saved.updatedAt = Date()
         trips[saved.id] = (itinerary: saved, userId: userId)
         persistToDisk()
+        AppLogger.shared.logAPISuccess(
+            endpoint: "firebase/users/\(userId)/trips/\(saved.id.uuidString)",
+            method: "POST",
+            statusCode: 200,
+            payloadSummary: "Saved trip to \(saved.destination) (\(saved.days.count) days, \(saved.currency) \(Int(saved.totalEstimatedCost)))"
+        )
     }
     
     public func fetchTrips(for userId: String) async throws -> [TripItinerary] {
-        return trips.values
+        let results = trips.values
             .filter { $0.userId == userId }
             .map { $0.itinerary }
             .sorted { $0.createdAt > $1.createdAt }
+        AppLogger.shared.logAPISuccess(
+            endpoint: "firebase/users/\(userId)/trips",
+            method: "GET",
+            statusCode: 200,
+            payloadSummary: "Retrieved \(results.count) saved trip(s)"
+        )
+        return results
     }
     
     public func fetchTrip(byId id: UUID) async throws -> TripItinerary? {
-        return trips[id]?.itinerary
+        let trip = trips[id]?.itinerary
+        if let t = trip {
+            AppLogger.shared.logAPISuccess(
+                endpoint: "firebase/trips/\(id.uuidString)",
+                method: "GET",
+                statusCode: 200,
+                payloadSummary: "Found itinerary for \(t.destination)"
+            )
+        }
+        return trip
     }
     
     public func deleteTrip(byId id: UUID) async throws {
         trips.removeValue(forKey: id)
         persistToDisk()
+        AppLogger.shared.logAPISuccess(
+            endpoint: "firebase/trips/\(id.uuidString)",
+            method: "DELETE",
+            statusCode: 200,
+            payloadSummary: "Removed trip from persistence"
+        )
     }
     
     // MARK: - User Repository

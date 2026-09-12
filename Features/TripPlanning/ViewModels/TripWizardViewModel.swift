@@ -10,6 +10,8 @@ public final class TripWizardViewModel {
     // Step 1: Route & Dates
     public var origin: String = "Delhi"
     public var destination: String = "Shimla"
+    public var originStationCode: String? = "NDLS"
+    public var destinationStationCode: String? = "SML"
     public var startDate: Date = Date()
     public var numberOfDays: Int = 5
     
@@ -35,6 +37,8 @@ public final class TripWizardViewModel {
     public init(from request: TripRequest) {
         self.origin = request.origin
         self.destination = request.destination
+        self.originStationCode = request.originStationCode
+        self.destinationStationCode = request.destinationStationCode
         self.startDate = request.startDate
         self.numberOfDays = request.numberOfDays
         self.travelersCount = request.travelersCount
@@ -103,6 +107,8 @@ public final class TripWizardViewModel {
         let request = TripRequest(
             origin: origin,
             destination: destination,
+            originStationCode: originStationCode,
+            destinationStationCode: destinationStationCode,
             startDate: startDate,
             numberOfDays: numberOfDays,
             travelersCount: travelersCount,

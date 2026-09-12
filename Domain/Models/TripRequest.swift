@@ -109,6 +109,8 @@ public struct TripRequest: Identifiable, Codable, Equatable, Sendable {
     public let id: UUID
     public let origin: String
     public let destination: String
+    public let originStationCode: String?
+    public let destinationStationCode: String?
     public let startDate: Date
     public let endDate: Date
     public let numberOfDays: Int
@@ -126,6 +128,8 @@ public struct TripRequest: Identifiable, Codable, Equatable, Sendable {
         id: UUID = UUID(),
         origin: String,
         destination: String,
+        originStationCode: String? = nil,
+        destinationStationCode: String? = nil,
         startDate: Date = Date(),
         endDate: Date? = nil,
         numberOfDays: Int,
@@ -142,6 +146,8 @@ public struct TripRequest: Identifiable, Codable, Equatable, Sendable {
         self.id = id
         self.origin = origin.trimmingCharacters(in: .whitespacesAndNewlines)
         self.destination = destination.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.originStationCode = originStationCode?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? originStationCode?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+        self.destinationStationCode = destinationStationCode?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? destinationStationCode?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
         self.startDate = startDate
         self.numberOfDays = max(1, numberOfDays)
         

@@ -118,6 +118,10 @@ public final class TripPlanningCoordinator: TripPlanningServiceProtocol, Sendabl
             subhead: "Checking \(request.destination) dates and budget"
         ))
         try request.validate()
+        AppLogger.shared.info(
+            "Starting trip planning pipeline for destination '\(request.destination)': \(request.numberOfDays) days, \(request.travelersCount) travelers, budget: \(request.currency) \(Int(request.budget))",
+            category: .pipeline
+        )
         
         // Step 2: Live Volatile Search (Parallel structured tasks)
         try Task.checkCancellation()
@@ -210,6 +214,10 @@ public final class TripPlanningCoordinator: TripPlanningServiceProtocol, Sendabl
             headline: "Your personalized trip is ready!",
             subhead: "\(itinerary.days.count) days planned in \(itinerary.destination)"
         ))
+        AppLogger.shared.success(
+            "Trip planning complete for '\(itinerary.destination)': \(itinerary.days.count) days, total cost \(itinerary.currency) \(Int(itinerary.totalEstimatedCost))",
+            category: .pipeline
+        )
         
         return itinerary
     }
@@ -220,6 +228,7 @@ public final class TripPlanningCoordinator: TripPlanningServiceProtocol, Sendabl
         request: TripRequest
     ) async throws -> ItineraryModificationResult {
         try Task.checkCancellation()
+        AppLogger.shared.info("Modifying trip for '\(itinerary.destination)' with command: \"\(instruction)\"", category: .pipeline)
         let searchResults = try await travelSearchService.searchAll(for: request)
         let filtered = try constraintEngine.applyConstraints(to: searchResults, for: request)
         
@@ -230,6 +239,7 @@ public final class TripPlanningCoordinator: TripPlanningServiceProtocol, Sendabl
         )
         
         try await tripRepository.saveTrip(result.updatedItinerary, for: "demo_user")
+        AppLogger.shared.success("Trip modified successfully: \"\(result.aiExplanation)\"", category: .pipeline)
         return result
     }
 }

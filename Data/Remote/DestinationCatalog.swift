@@ -1640,33 +1640,152 @@ public enum DestinationCatalog {
                     metadata: metadata
                 )
             ]
+        } else if (origin.lowercased().contains("viramgam") || origin.lowercased().contains("ahmedabad")) && dest.contains("patna") {
+            let depDate = cal.date(bySettingHour: 20, minute: 12, second: 0, of: baseDate) ?? date
+            let arrDate = depDate.addingTimeInterval(38 * 3600 + 60)
+            return [
+                TrainCandidate(
+                    trainNumber: "15635",
+                    trainName: "Guwahati Dwarka Express",
+                    originStation: "Viramgam Jn (VG)",
+                    destinationStation: "Patna Jn (PNBE)",
+                    departureTime: depDate,
+                    arrivalTime: arrDate,
+                    durationMinutes: 2281, // 38h 1m (1,893 km)
+                    pricePerPerson: 1980.0,
+                    seatClass: "3A, 2A, SL",
+                    availabilityStatus: "Available (42)",
+                    metadata: metadata
+                ),
+                TrainCandidate(
+                    trainNumber: "15667",
+                    trainName: "Kamakhya Express",
+                    originStation: "Viramgam Jn (VG)",
+                    destinationStation: "Patna Jn (PNBE)",
+                    departureTime: depDate,
+                    arrivalTime: arrDate,
+                    durationMinutes: 2281, // 38h 1m (1,893 km)
+                    pricePerPerson: 1980.0,
+                    seatClass: "3A, 2A, SL",
+                    availabilityStatus: "Available (25)",
+                    metadata: metadata
+                )
+            ]
+        } else if origin.lowercased().contains("patna") && (dest.contains("viramgam") || dest.contains("ahmedabad")) {
+            let depDate = cal.date(bySettingHour: 4, minute: 15, second: 0, of: baseDate) ?? date
+            let arrDate = depDate.addingTimeInterval(34 * 3600 + 39 * 60)
+            return [
+                TrainCandidate(
+                    trainNumber: "15636",
+                    trainName: "Okha Dwarka Express",
+                    originStation: "Patna Jn (PNBE)",
+                    destinationStation: "Viramgam Jn (VG)",
+                    departureTime: depDate,
+                    arrivalTime: arrDate,
+                    durationMinutes: 2079, // 34h 39m (1,893 km)
+                    pricePerPerson: 1980.0,
+                    seatClass: "3A, 2A, SL",
+                    availabilityStatus: "Available (38)",
+                    metadata: metadata
+                ),
+                TrainCandidate(
+                    trainNumber: "15668",
+                    trainName: "Gandhidham Express",
+                    originStation: "Patna Jn (PNBE)",
+                    destinationStation: "Viramgam Jn (VG)",
+                    departureTime: depDate,
+                    arrivalTime: arrDate,
+                    durationMinutes: 2079, // 34h 39m (1,893 km)
+                    pricePerPerson: 1980.0,
+                    seatClass: "3A, 2A, SL",
+                    availabilityStatus: "Available (19)",
+                    metadata: metadata
+                )
+            ]
         }
         
-        // Default high-speed rail options
+        // Dynamic Indian Railways transit estimation based on geographical distance
+        let cityCoords: [String: GeoLocation] = [
+            "delhi": GeoLocation(latitude: 28.6139, longitude: 77.2090),
+            "new delhi": GeoLocation(latitude: 28.6139, longitude: 77.2090),
+            "patna": GeoLocation(latitude: 25.6032, longitude: 85.1376),
+            "viramgam": GeoLocation(latitude: 23.1276, longitude: 72.0535),
+            "ahmedabad": GeoLocation(latitude: 23.0225, longitude: 72.5714),
+            "mumbai": GeoLocation(latitude: 19.0760, longitude: 72.8777),
+            "kolkata": GeoLocation(latitude: 22.5726, longitude: 88.3639),
+            "bengaluru": GeoLocation(latitude: 12.9716, longitude: 77.5946),
+            "chennai": GeoLocation(latitude: 13.0827, longitude: 80.2707),
+            "jaipur": GeoLocation(latitude: 26.9124, longitude: 75.7873),
+            "goa": GeoLocation(latitude: 15.2993, longitude: 74.1240),
+            "shimla": GeoLocation(latitude: 31.1048, longitude: 77.1734),
+            "kalka": GeoLocation(latitude: 30.8392, longitude: 76.9316),
+            "varanasi": GeoLocation(latitude: 25.3176, longitude: 82.9739),
+            "amritsar": GeoLocation(latitude: 31.6340, longitude: 74.8723),
+            "lucknow": GeoLocation(latitude: 26.8467, longitude: 80.9462),
+            "pune": GeoLocation(latitude: 18.5204, longitude: 73.8567),
+            "bhopal": GeoLocation(latitude: 23.2599, longitude: 77.4126),
+            "puducherry": GeoLocation(latitude: 11.9416, longitude: 79.8083),
+            "pondicherry": GeoLocation(latitude: 11.9416, longitude: 79.8083),
+            "dehradun": GeoLocation(latitude: 30.3165, longitude: 78.0322),
+            "dehra dun": GeoLocation(latitude: 30.3165, longitude: 78.0322),
+            "haridwar": GeoLocation(latitude: 29.9457, longitude: 78.1642),
+            "rishikesh": GeoLocation(latitude: 30.0869, longitude: 78.2676),
+            "chandigarh": GeoLocation(latitude: 30.7333, longitude: 76.7794),
+            "agra": GeoLocation(latitude: 27.1767, longitude: 78.0081),
+            "kanpur": GeoLocation(latitude: 26.4499, longitude: 80.3319),
+            "surat": GeoLocation(latitude: 21.1702, longitude: 72.8311),
+            "vadodara": GeoLocation(latitude: 22.3072, longitude: 73.1812),
+            "rajkot": GeoLocation(latitude: 22.3039, longitude: 70.8022),
+            "hyderabad": GeoLocation(latitude: 17.3850, longitude: 78.4867),
+            "visakhapatnam": GeoLocation(latitude: 17.6868, longitude: 83.2185),
+            "kochi": GeoLocation(latitude: 9.9312, longitude: 76.2673),
+            "thiruvananthapuram": GeoLocation(latitude: 8.5241, longitude: 76.9366)
+        ]
+        
+        let origClean = origin.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let destClean = dest.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        var estDistanceKm = 400.0
+        if let oCoord = cityCoords.first(where: { origClean.contains($0.key) })?.value,
+           let dCoord = cityCoords.first(where: { destClean.contains($0.key) })?.value {
+            estDistanceKm = max(80.0, oCoord.distance(to: dCoord) * 1.35)
+        }
+        
+        let avgSpeedKmH = 55.0
+        let estDurationMins = max(90, Int((estDistanceKm / avgSpeedKmH) * 60.0))
+        let fare3A = max(420.0, (estDistanceKm * 1.05 / 10.0).rounded() * 10.0)
+        let fareSL = max(240.0, (estDistanceKm * 0.45 / 10.0).rounded() * 10.0)
+        
+        let departureTime1 = cal.date(bySettingHour: 7, minute: 30, second: 0, of: baseDate) ?? date
+        let arrivalTime1 = departureTime1.addingTimeInterval(Double(estDurationMins * 60))
+        
+        let departureTime2 = cal.date(bySettingHour: 16, minute: 45, second: 0, of: baseDate) ?? date
+        let arrivalTime2 = departureTime2.addingTimeInterval(Double((estDurationMins - 30) * 60))
+        
         return [
             TrainCandidate(
                 trainNumber: "12431",
-                trainName: "Rajdhani Superfast Express",
+                trainName: "Superfast Express",
                 originStation: "\(origin) Central",
-                destinationStation: "\(destination) Terminal",
-                departureTime: dep1,
-                arrivalTime: arr1,
-                durationMinutes: 330,
-                pricePerPerson: 1750.0,
+                destinationStation: "\(destination) Junction",
+                departureTime: departureTime1,
+                arrivalTime: arrivalTime1,
+                durationMinutes: estDurationMins,
+                pricePerPerson: fare3A,
                 seatClass: "3A",
                 availabilityStatus: "Available (35)",
                 metadata: metadata
             ),
             TrainCandidate(
-                trainNumber: "20901",
-                trainName: "Vande Bharat Express",
+                trainNumber: "19033",
+                trainName: "Mail Express",
                 originStation: "\(origin) Junction",
-                destinationStation: "\(destination) City",
-                departureTime: dep2,
-                arrivalTime: arr2,
-                durationMinutes: 240,
-                pricePerPerson: 1450.0,
-                seatClass: "CC",
+                destinationStation: "\(destination) Terminal",
+                departureTime: departureTime2,
+                arrivalTime: arrivalTime2,
+                durationMinutes: estDurationMins + 45,
+                pricePerPerson: fareSL,
+                seatClass: "SL",
                 availabilityStatus: "Available (60)",
                 metadata: metadata
             )

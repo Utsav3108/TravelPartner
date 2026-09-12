@@ -32,6 +32,21 @@ public enum GeminiError: LocalizedError, Equatable, Sendable {
     }
 }
 
+/// Enforces strict length limits on Gemini-generated narratives.
+public enum GeminiWordLimitEnforcer {
+    public static func trimTo200Words(_ text: String) -> String {
+        let words = text.split(whereSeparator: \.isWhitespace)
+        if words.count <= 200 {
+            return text
+        }
+        let truncatedWords = words.prefix(200).joined(separator: " ")
+        if let lastPeriod = truncatedWords.lastIndex(where: { $0 == "." || $0 == "!" || $0 == "?" }) {
+            return String(truncatedWords[...lastPeriod])
+        }
+        return truncatedWords + "..."
+    }
+}
+
 // MARK: - Gemini Service Protocol
 
 /// Protocol defining the contract for Gemini Generative AI operations.
@@ -70,7 +85,7 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
     private let fallback: FallbackGeminiService
     
     public init(
-        modelName: String = "gemini-1.5-flash",
+        modelName: String = "gemini-2.5-flash",
         fallback: FallbackGeminiService = FallbackGeminiService()
     ) {
         self.modelName = modelName
@@ -83,16 +98,36 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
         return AppConfiguration.shared.configureFirebaseIfNeeded()
     }
     
+    /// Strict output schema defining the expected JSON structure for parsed travel requests.
+    public static var tripRequestSchema: Schema {
+        return Schema.object(
+            properties: [
+                "destination": .string(description: "Destination city or tourist region name, capitalized"),
+                "origin": .string(description: "Departure origin city, defaults to 'Delhi' if unspecified"),
+                "numberOfDays": .integer(description: "Total trip duration in days (positive integer)"),
+                "travelersCount": .integer(description: "Total count of traveling guests (positive integer)"),
+                "groupType": .enumeration(values: ["Solo", "Couple", "Friends", "Family", "Business"], description: "Dynamic of the travel group"),
+                "budget": .double(description: "Total monetary budget for the trip"),
+                "currency": .string(description: "ISO currency code, e.g. INR, USD, EUR, GBP"),
+                "tripType": .enumeration(values: ["roundTrip", "oneWay"], description: "Type of trip journey"),
+                "preferences": .array(items: .string(), description: "Preferences: Nature, Culture, Adventure, Foodie, Shopping, Luxury, Budget-friendly, Relaxation")
+            ],
+            optionalProperties: ["origin", "tripType", "preferences"]
+        )
+    }
+    
     private func getGenerativeModel(
         systemInstruction: String? = nil,
-        responseJSON: Bool = false
+        responseJSON: Bool = false,
+        responseSchema: Schema? = nil
     ) -> GenerativeModel? {
         guard ensureFirebaseConfigured() else { return nil }
         
         let ai = FirebaseAI.firebaseAI(backend: .googleAI())
         let config = GenerationConfig(
-            temperature: 0.2,
-            responseMIMEType: responseJSON ? "application/json" : "text/plain"
+            temperature: 0.1,
+            responseMIMEType: (responseJSON || responseSchema != nil) ? "application/json" : "text/plain",
+            responseSchema: responseSchema
         )
         
         let systemContent: ModelContent? = systemInstruction.map {
@@ -110,29 +145,32 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
     // MARK: - Natural Language Understanding (Prompt Parsing)
     
     public func parseTripPrompt(_ prompt: String) async throws -> TripRequest {
+        let startTime = Date()
         #if canImport(FirebaseAI) && canImport(FirebaseCore)
-        let systemPrompt = """
-        You are a travel planning parser. Extract travel parameters from the user prompt into raw JSON with keys:
-        - "destination" (string, capitalized name of destination city/region)
-        - "origin" (string, default "Delhi" if unspecified)
-        - "numberOfDays" (integer, positive number of days)
-        - "travelersCount" (integer, positive number of people)
-        - "groupType" (one of: "Solo", "Couple", "Friends", "Family", "Business")
-        - "budget" (number, total budget)
-        - "currency" (string: "INR", "USD", "EUR", "GBP", default "INR")
-        - "tripType" (one of: "roundTrip", "oneWay")
-        - "preferences" (array of strings from: "Nature", "Culture", "Adventure", "Foodie", "Shopping", "Luxury", "Budget-friendly", "Relaxation")
-        Output ONLY valid JSON without markdown wrapping.
-        """
+        let systemPrompt = "Extract travel parameters strictly conforming to the structured response schema."
         
-        if let model = getGenerativeModel(systemInstruction: systemPrompt, responseJSON: true) {
+        if let model = getGenerativeModel(systemInstruction: systemPrompt, responseSchema: Self.tripRequestSchema) {
             do {
                 let response = try await model.generateContent(prompt)
+                let elapsed = Date().timeIntervalSince(startTime)
                 if let text = response.text, let parsed = Self.decodeTripRequest(from: text) {
+                    AppLogger.shared.logGeminiResponse(
+                        action: "parseTripPrompt (Structured Schema)",
+                        model: modelName,
+                        duration: elapsed,
+                        promptSnippet: prompt,
+                        responseSnippet: "Parsed destination: \(parsed.destination), days: \(parsed.numberOfDays), travelers: \(parsed.travelersCount), budget: \(parsed.currency) \(Int(parsed.budget))"
+                    )
                     return parsed
                 }
             } catch {
-                // Remote Firebase AI failed (e.g. API disabled or network error)
+                AppLogger.shared.logGeminiError(
+                    action: "parseTripPrompt",
+                    model: modelName,
+                    error: error,
+                    fallbackUsed: true,
+                    promptSnippet: prompt
+                )
             }
         }
         #endif
@@ -151,22 +189,38 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
     // MARK: - Grounded Narrative Synthesis
     
     public func generateItineraryNarrative(for itinerary: TripItinerary, request: TripRequest) async throws -> String {
+        let startTime = Date()
         #if canImport(FirebaseAI) && canImport(FirebaseCore)
         let prompt = Self.buildNarrativePrompt(for: itinerary, request: request)
         let systemPrompt = """
-        You are an inspiring, grounded travel concierge. Write a compelling 2-3 paragraph itinerary narrative.
+        You are an inspiring, grounded travel concierge. Write a concise, compelling itinerary narrative.
         Ground your text strictly in the provided hotel, transit, and daily activity names.
         Do NOT invent prices, tickets, or confirmation numbers.
+        CRITICAL CONSTRAINT: Keep your entire response strictly under 200 words.
         """
         
         if let model = getGenerativeModel(systemInstruction: systemPrompt, responseJSON: false) {
             do {
                 let response = try await model.generateContent(prompt)
+                let elapsed = Date().timeIntervalSince(startTime)
                 if let text = response.text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    return text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let narrative = GeminiWordLimitEnforcer.trimTo200Words(text.trimmingCharacters(in: .whitespacesAndNewlines))
+                    AppLogger.shared.logGeminiResponse(
+                        action: "generateItineraryNarrative",
+                        model: modelName,
+                        duration: elapsed,
+                        promptSnippet: "Itinerary narrative for \(itinerary.destination)",
+                        responseSnippet: narrative
+                    )
+                    return narrative
                 }
             } catch {
-                // Fallback
+                AppLogger.shared.logGeminiError(
+                    action: "generateItineraryNarrative",
+                    model: modelName,
+                    error: error,
+                    fallbackUsed: true
+                )
             }
         }
         #endif
@@ -176,7 +230,7 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
             let direct = GeminiAPIService(apiKey: key, fallback: fallback)
             if let directText = try? await direct.generateItineraryNarrative(for: itinerary, request: request),
                !directText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return directText.trimmingCharacters(in: .whitespacesAndNewlines)
+                return GeminiWordLimitEnforcer.trimTo200Words(directText.trimmingCharacters(in: .whitespacesAndNewlines))
             }
         }
         
@@ -187,9 +241,10 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
         #if canImport(FirebaseAI) && canImport(FirebaseCore)
         let prompt = Self.buildNarrativePrompt(for: itinerary, request: request)
         let systemPrompt = """
-        You are an inspiring, grounded travel concierge. Write a compelling 2-3 paragraph itinerary narrative.
+        You are an inspiring, grounded travel concierge. Write a concise, compelling itinerary narrative.
         Ground your text strictly in the provided hotel, transit, and daily activity names.
         Do NOT invent prices, tickets, or confirmation numbers.
+        CRITICAL CONSTRAINT: Keep your entire response strictly under 200 words.
         """
         
         if let model = getGenerativeModel(systemInstruction: systemPrompt, responseJSON: false) {
@@ -265,6 +320,7 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
         currentItinerary: TripItinerary,
         candidatePool: FilteredCandidatesBundle
     ) async throws -> ItineraryModificationResult {
+        let startTime = Date()
         #if canImport(FirebaseAI) && canImport(FirebaseCore)
         let prompt = Self.buildModificationPrompt(
             instruction: instruction,
@@ -286,16 +342,30 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
         if let model = getGenerativeModel(systemInstruction: systemPrompt, responseJSON: true) {
             do {
                 let response = try await model.generateContent(prompt)
+                let elapsed = Date().timeIntervalSince(startTime)
                 if let text = response.text,
                    let result = Self.applyModification(
                     jsonText: text,
                     currentItinerary: currentItinerary,
                     candidatePool: candidatePool
                    ) {
+                    AppLogger.shared.logGeminiResponse(
+                        action: "handleConversationalModification",
+                        model: modelName,
+                        duration: elapsed,
+                        promptSnippet: instruction,
+                        responseSnippet: result.aiExplanation
+                    )
                     return result
                 }
             } catch {
-                // Fallback
+                AppLogger.shared.logGeminiError(
+                    action: "handleConversationalModification",
+                    model: modelName,
+                    error: error,
+                    fallbackUsed: true,
+                    promptSnippet: instruction
+                )
             }
         }
         #endif
@@ -384,6 +454,7 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
         Transit: \(transportMode) - \(transportTitle)
         Stay: \(hotelName) (\(hotelScore))
         Highlights: \(activitiesSummary)
+        CRITICAL CONSTRAINT: Keep your entire itinerary narrative response strictly under 200 words.
         """
     }
     
@@ -623,7 +694,7 @@ public final class FallbackGeminiService: GeminiServiceProtocol, Sendable {
             preferences.insert(.shopping)
         }
         
-        return TripRequest(
+        let req = TripRequest(
             origin: "Delhi",
             destination: destination,
             numberOfDays: days,
@@ -634,6 +705,15 @@ public final class FallbackGeminiService: GeminiServiceProtocol, Sendable {
             tripType: tripType,
             preferences: preferences
         )
+        AppLogger.shared.logGeminiResponse(
+            action: "parseTripPrompt (Deterministic NLU)",
+            model: "FallbackGeminiService",
+            duration: 0.005,
+            promptSnippet: prompt,
+            responseSnippet: "Parsed destination: \(req.destination), days: \(req.numberOfDays), group: \(req.groupType.rawValue), budget: \(req.currency) \(Int(req.budget))",
+            isFallback: true
+        )
+        return req
     }
     
     public func generateItineraryNarrative(for itinerary: TripItinerary, request: TripRequest) async throws -> String {
@@ -644,13 +724,22 @@ public final class FallbackGeminiService: GeminiServiceProtocol, Sendable {
         let primaryHighlights = itinerary.days.prefix(2).flatMap { $0.activities }.prefix(3).map(\.place.name).joined(separator: ", ")
         let highlightsSnippet = primaryHighlights.isEmpty ? "top regional landmarks" : primaryHighlights
         
-        return """
+        let narrative = """
         Welcome to your tailored \(request.numberOfDays)-day \(request.destination) expedition! \
         Curated specifically for \(travelerPhrase) with a total allocated budget of \(request.currency) \(Int(request.budget)).
 
         You will be traveling comfortably via \(transportTitle) and staying at \(hotelTitle), which was scored highest by our on-device engine for safety, proximity, and budget fit. \
         Your schedule balances iconic attractions like \(highlightsSnippet) with scenic downtime, clustered geographically to keep daily transit smooth and relaxing.
         """
+        AppLogger.shared.logGeminiResponse(
+            action: "generateItineraryNarrative (Local Templates)",
+            model: "FallbackGeminiService",
+            duration: 0.005,
+            promptSnippet: "Generating narrative for \(itinerary.destination)",
+            responseSnippet: String(narrative.prefix(140)),
+            isFallback: true
+        )
+        return GeminiWordLimitEnforcer.trimTo200Words(narrative)
     }
     
     public func handleConversationalModification(
@@ -730,40 +819,65 @@ public final class FallbackGeminiService: GeminiServiceProtocol, Sendable {
 
 /// Direct Google Gemini REST API Client.
 public final class GeminiAPIService: GeminiServiceProtocol, Sendable {
+    public let modelName: String
     private let apiKey: String
     private let session: URLSession
     private let fallback: FallbackGeminiService
     
     public init(
         apiKey: String,
+        modelName: String = "gemini-2.5-flash",
         session: URLSession = .shared,
         fallback: FallbackGeminiService = FallbackGeminiService()
     ) {
         self.apiKey = apiKey
+        self.modelName = modelName
         self.session = session
         self.fallback = fallback
     }
     
     public func parseTripPrompt(_ prompt: String) async throws -> TripRequest {
-        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(apiKey)"
+        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent?key=\(apiKey)"
         guard let url = URL(string: urlString) else {
             return try await fallback.parseTripPrompt(prompt)
         }
-        
-        let systemPrompt = """
-        You are a structured parser for travel planning requests. Extract the travel details into a raw JSON object with keys:
-        "destination" (string), "origin" (string, default "Delhi"), "numberOfDays" (integer), "travelersCount" (integer),
-        "groupType" (one of "Solo", "Couple", "Friends", "Family", "Business"), "budget" (number), "currency" (string).
-        Output ONLY valid JSON without markdown wrapping.
-        """
         
         let requestBody: [String: Any] = [
             "contents": [
                 [
                     "role": "user",
                     "parts": [
-                        ["text": "\(systemPrompt)\n\nUser Prompt: \(prompt)"]
+                        ["text": "Extract travel parameters from the user prompt: \(prompt)"]
                     ]
+                ]
+            ],
+            "generationConfig": [
+                "temperature": 0.1,
+                "responseMimeType": "application/json",
+                "responseSchema": [
+                    "type": "OBJECT",
+                    "properties": [
+                        "destination": ["type": "STRING", "description": "Capitalized destination city or region name"],
+                        "origin": ["type": "STRING", "description": "Origin city, defaults to 'Delhi' if unspecified"],
+                        "numberOfDays": ["type": "INTEGER", "description": "Duration in days"],
+                        "travelersCount": ["type": "INTEGER", "description": "Number of travelers"],
+                        "groupType": [
+                            "type": "STRING",
+                            "enum": ["Solo", "Couple", "Friends", "Family", "Business"],
+                            "description": "Dynamic of travel group"
+                        ],
+                        "budget": ["type": "NUMBER", "description": "Total trip budget"],
+                        "currency": ["type": "STRING", "description": "Currency code e.g. INR, USD, EUR"],
+                        "tripType": [
+                            "type": "STRING",
+                            "enum": ["roundTrip", "oneWay"]
+                        ],
+                        "preferences": [
+                            "type": "ARRAY",
+                            "items": ["type": "STRING"]
+                        ]
+                    ],
+                    "required": ["destination", "numberOfDays", "travelersCount", "groupType", "budget", "currency"]
                 ]
             ]
         ]
@@ -778,8 +892,29 @@ public final class GeminiAPIService: GeminiServiceProtocol, Sendable {
         request.httpBody = httpBody
         request.timeoutInterval = 15.0
         
+        let startTime = Date()
         do {
             let (data, response) = try await session.data(for: request)
+            let elapsed = Date().timeIntervalSince(startTime)
+            if let httpResponse = response as? HTTPURLResponse {
+                if (200...299).contains(httpResponse.statusCode) {
+                    AppLogger.shared.logAPISuccess(
+                        endpoint: "generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent",
+                        method: "POST",
+                        statusCode: httpResponse.statusCode,
+                        duration: elapsed,
+                        payloadSummary: "REST response: \(data.count) bytes"
+                    )
+                } else {
+                    AppLogger.shared.logAPIError(
+                        endpoint: "generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent",
+                        method: "POST",
+                        statusCode: httpResponse.statusCode,
+                        error: GeminiError.networkError("HTTP status \(httpResponse.statusCode)"),
+                        duration: elapsed
+                    )
+                }
+            }
             if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let candidates = json["candidates"] as? [[String: Any]],
@@ -800,7 +935,7 @@ public final class GeminiAPIService: GeminiServiceProtocol, Sendable {
                     let groupRaw = dict["groupType"] as? String ?? "Friends"
                     let groupType = GroupType(rawValue: groupRaw) ?? .friends
                     
-                    return TripRequest(
+                    let parsed = TripRequest(
                         origin: origin,
                         destination: dest,
                         numberOfDays: days,
@@ -809,22 +944,40 @@ public final class GeminiAPIService: GeminiServiceProtocol, Sendable {
                         budget: budget,
                         currency: currency
                     )
+                    AppLogger.shared.logGeminiResponse(
+                        action: "parseTripPrompt (Direct REST)",
+                        model: modelName,
+                        duration: elapsed,
+                        promptSnippet: prompt,
+                        responseSnippet: "Parsed destination: \(parsed.destination), days: \(parsed.numberOfDays), budget: \(parsed.currency) \(Int(parsed.budget))",
+                        isFallback: false
+                    )
+                    return parsed
                 }
             }
-        } catch {}
+        } catch {
+            let elapsed = Date().timeIntervalSince(startTime)
+            AppLogger.shared.logAPIError(
+                endpoint: "generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent",
+                method: "POST",
+                error: error,
+                duration: elapsed
+            )
+        }
         
         return try await fallback.parseTripPrompt(prompt)
     }
     
     public func generateItineraryNarrative(for itinerary: TripItinerary, request: TripRequest) async throws -> String {
         let prompt = """
-        Write a concise, captivating 2-paragraph narrative for a \(request.numberOfDays)-day trip to \(request.destination) for \(request.travelersCount) \(request.groupType.rawValue.lowercased()) with total budget \(request.currency) \(Int(request.budget)).
+        Write a concise, captivating narrative under 200 words for a \(request.numberOfDays)-day trip to \(request.destination) for \(request.travelersCount) \(request.groupType.rawValue.lowercased()) with total budget \(request.currency) \(Int(request.budget)).
         Selected hotel: \(itinerary.selectedHotel?.name ?? "Central Hotel").
         Selected transit: \(itinerary.selectedTransportation?.title ?? "Express Transit").
         Highlight local atmosphere and pacing. Do NOT invent prices or confirmation codes.
+        CRITICAL CONSTRAINT: Keep your entire response strictly under 200 words.
         """
         
-        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(apiKey)"
+        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent?key=\(apiKey)"
         guard let url = URL(string: urlString) else {
             return try await fallback.generateItineraryNarrative(for: itinerary, request: request)
         }
@@ -842,8 +995,29 @@ public final class GeminiAPIService: GeminiServiceProtocol, Sendable {
         urlReq.httpBody = httpBody
         urlReq.timeoutInterval = 15.0
         
+        let startTime = Date()
         do {
             let (data, response) = try await session.data(for: urlReq)
+            let elapsed = Date().timeIntervalSince(startTime)
+            if let http = response as? HTTPURLResponse {
+                if (200...299).contains(http.statusCode) {
+                    AppLogger.shared.logAPISuccess(
+                        endpoint: "generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent",
+                        method: "POST",
+                        statusCode: http.statusCode,
+                        duration: elapsed,
+                        payloadSummary: "REST narrative response: \(data.count) bytes"
+                    )
+                } else {
+                    AppLogger.shared.logAPIError(
+                        endpoint: "generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent",
+                        method: "POST",
+                        statusCode: http.statusCode,
+                        error: GeminiError.networkError("HTTP status \(http.statusCode)"),
+                        duration: elapsed
+                    )
+                }
+            }
             if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let candidates = json["candidates"] as? [[String: Any]],
@@ -851,9 +1025,26 @@ public final class GeminiAPIService: GeminiServiceProtocol, Sendable {
                let content = first["content"] as? [String: Any],
                let parts = content["parts"] as? [[String: Any]],
                let text = parts.first?["text"] as? String {
-                return text.trimmingCharacters(in: .whitespacesAndNewlines)
+                let narrative = GeminiWordLimitEnforcer.trimTo200Words(text.trimmingCharacters(in: .whitespacesAndNewlines))
+                AppLogger.shared.logGeminiResponse(
+                    action: "generateItineraryNarrative (Direct REST)",
+                    model: modelName,
+                    duration: elapsed,
+                    promptSnippet: "Itinerary narrative for \(itinerary.destination)",
+                    responseSnippet: narrative,
+                    isFallback: false
+                )
+                return narrative
             }
-        } catch {}
+        } catch {
+            let elapsed = Date().timeIntervalSince(startTime)
+            AppLogger.shared.logAPIError(
+                endpoint: "generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent",
+                method: "POST",
+                error: error,
+                duration: elapsed
+            )
+        }
         
         return try await fallback.generateItineraryNarrative(for: itinerary, request: request)
     }
@@ -877,11 +1068,13 @@ public final class GeminiAPIService: GeminiServiceProtocol, Sendable {
 public final class HybridGeminiService: GeminiServiceProtocol, Sendable {
     public let firebaseService: FirebaseGeminiService
     public let fallbackService: FallbackGeminiService
+    public let modelName: String
     
     public init(
-        modelName: String = "gemini-1.5-flash",
+        modelName: String = "gemini-2.5-flash",
         fallbackService: FallbackGeminiService = FallbackGeminiService()
     ) {
+        self.modelName = modelName
         self.fallbackService = fallbackService
         self.firebaseService = FirebaseGeminiService(modelName: modelName, fallback: fallbackService)
     }
@@ -891,7 +1084,7 @@ public final class HybridGeminiService: GeminiServiceProtocol, Sendable {
         if AppConfiguration.shared.hasUserCustomGeminiKey,
            let customKey = AppConfiguration.shared.geminiApiKey,
            customKey.count > 10 {
-            return GeminiAPIService(apiKey: customKey, fallback: fallbackService)
+            return GeminiAPIService(apiKey: customKey, modelName: modelName, fallback: fallbackService)
         }
         
         #if canImport(FirebaseAI) && canImport(FirebaseCore)
@@ -901,7 +1094,7 @@ public final class HybridGeminiService: GeminiServiceProtocol, Sendable {
         #endif
         
         if let key = AppConfiguration.shared.geminiApiKey, !key.isEmpty, key.count > 10 {
-            return GeminiAPIService(apiKey: key, fallback: fallbackService)
+            return GeminiAPIService(apiKey: key, modelName: modelName, fallback: fallbackService)
         }
         
         return fallbackService
@@ -913,7 +1106,7 @@ public final class HybridGeminiService: GeminiServiceProtocol, Sendable {
             return (false, "No Key Configured", "Add a Gemini API key in Profile or configure GoogleService-Info.plist to enable live cloud AI.")
         }
         
-        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(key)"
+        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent?key=\(key)"
         guard let url = URL(string: urlString) else {
             return (false, "Invalid Endpoint URL", "Could not format Gemini endpoint URL.")
         }
@@ -927,15 +1120,37 @@ public final class HybridGeminiService: GeminiServiceProtocol, Sendable {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 8.0
         
+        let startTime = Date()
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
+            let elapsed = Date().timeIntervalSince(startTime)
             guard let http = response as? HTTPURLResponse else {
+                AppLogger.shared.logAPIError(
+                    endpoint: "generativelanguage.googleapis.com (ping test)",
+                    method: "POST",
+                    error: GeminiError.networkError("Failed to reach Google servers"),
+                    duration: elapsed
+                )
                 return (false, "Network Error", "Network request failed to reach Google servers.")
             }
             
             if http.statusCode == 200 {
+                AppLogger.shared.logAPISuccess(
+                    endpoint: "generativelanguage.googleapis.com (ping test)",
+                    method: "POST",
+                    statusCode: 200,
+                    duration: elapsed,
+                    payloadSummary: "Gemini connection verified"
+                )
                 return (true, "Live Gemini Connected", "Successfully connected to Google Gemini Cloud API! Real-time streaming and dynamic generation are active.")
             } else if http.statusCode == 403 {
+                AppLogger.shared.logAPIError(
+                    endpoint: "generativelanguage.googleapis.com (ping test)",
+                    method: "POST",
+                    statusCode: 403,
+                    error: GeminiError.networkError("Permission denied / API disabled (403)"),
+                    duration: elapsed
+                )
                 let projectId = AppConfiguration.shared.firebaseProjectId ?? "your project"
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let errorDict = json["error"] as? [String: Any],
@@ -945,9 +1160,23 @@ public final class HybridGeminiService: GeminiServiceProtocol, Sendable {
                 }
                 return (false, "Permission Denied (403)", "Google Cloud returned 403 Forbidden. Enable Gemini API in project '\(projectId)' or paste a free key from aistudio.google.com.")
             } else {
+                AppLogger.shared.logAPIError(
+                    endpoint: "generativelanguage.googleapis.com (ping test)",
+                    method: "POST",
+                    statusCode: http.statusCode,
+                    error: GeminiError.networkError("HTTP status \(http.statusCode)"),
+                    duration: elapsed
+                )
                 return (false, "HTTP Error \(http.statusCode)", "Server responded with status \(http.statusCode). Offline fallback is active.")
             }
         } catch {
+            let elapsed = Date().timeIntervalSince(startTime)
+            AppLogger.shared.logAPIError(
+                endpoint: "generativelanguage.googleapis.com (ping test)",
+                method: "POST",
+                error: error,
+                duration: elapsed
+            )
             return (false, "Offline / Network Error", error.localizedDescription)
         }
     }

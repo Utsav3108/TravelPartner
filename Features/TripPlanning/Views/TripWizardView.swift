@@ -3,14 +3,23 @@ import SwiftUI
 public struct TripWizardView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: TripWizardViewModel
+    public let isPresentedModally: Bool
     public var onComplete: (TripRequest) -> Void
     
-    public init(initialRequest: TripRequest? = nil, onComplete: @escaping (TripRequest) -> Void) {
+    @State private var showingDestinationPicker: Bool = false
+    @State private var showingOriginPicker: Bool = false
+    
+    public init(
+        initialRequest: TripRequest? = nil,
+        isPresentedModally: Bool = true,
+        onComplete: @escaping (TripRequest) -> Void
+    ) {
         if let initial = initialRequest {
             _viewModel = State(initialValue: TripWizardViewModel(from: initial))
         } else {
             _viewModel = State(initialValue: TripWizardViewModel())
         }
+        self.isPresentedModally = isPresentedModally
         self.onComplete = onComplete
     }
     
@@ -84,7 +93,9 @@ public struct TripWizardView: View {
                                 do {
                                     let req = try viewModel.buildTripRequest()
                                     onComplete(req)
-                                    dismiss()
+                                    if isPresentedModally {
+                                        dismiss()
+                                    }
                                 } catch {
                                     viewModel.validationError = error.localizedDescription
                                 }
@@ -109,10 +120,24 @@ public struct TripWizardView: View {
             }
             .navigationTitle("Custom Trip Planner")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+                if isPresentedModally {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
                     }
+                }
+            }
+            .sheet(isPresented: $showingDestinationPicker) {
+                StationPickerSheet(title: "Select Destination Station / City") { city, code in
+                    viewModel.destination = city
+                    viewModel.destinationStationCode = code.isEmpty ? nil : code
+                }
+            }
+            .sheet(isPresented: $showingOriginPicker) {
+                StationPickerSheet(title: "Select Starting Station / City") { city, code in
+                    viewModel.origin = city
+                    viewModel.originStationCode = code.isEmpty ? nil : code
                 }
             }
         }
@@ -136,20 +161,189 @@ public struct TripWizardView: View {
                     .foregroundColor(.secondary)
             }
             
+            // Destination City
             VStack(alignment: .leading, spacing: 6) {
-                Text("Destination City")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                TextField("e.g. Shimla, Manali, Goa", text: $viewModel.destination)
-                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    Text("Destination City")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Button {
+                        showingDestinationPicker = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "map.fill")
+                                .font(.caption2)
+                            Text("Pick by State / Station")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                        }
+                        .foregroundColor(.blue)
+                    }
+                }
+                
+                HStack(spacing: 8) {
+                    TextField("e.g. Dehradun, Shimla, Goa", text: $viewModel.destination)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    Button {
+                        showingDestinationPicker = true
+                    } label: {
+                        Image(systemName: "list.bullet.rectangle.portrait")
+                            .font(.body)
+                            .foregroundColor(.blue)
+                            .padding(7)
+                            .background(Color.blue.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+                
+                if let code = viewModel.destinationStationCode, !code.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "tram.fill")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
+                        Text("Rail Token: \(code)")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                        Spacer()
+                        Button("Clear Token") {
+                            viewModel.destinationStationCode = nil
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 4)
+                }
             }
             
+            // Starting Origin
             VStack(alignment: .leading, spacing: 6) {
-                Text("Starting Origin")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                TextField("e.g. Delhi, Mumbai, Chandigarh", text: $viewModel.origin)
-                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    Text("Starting Origin")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Button {
+                        showingOriginPicker = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "map.fill")
+                                .font(.caption2)
+                            Text("Pick by State / Station")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                        }
+                        .foregroundColor(.blue)
+                    }
+                }
+                
+                HStack(spacing: 8) {
+                    TextField("e.g. Puducherry, Delhi, Mumbai", text: $viewModel.origin)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    Button {
+                        showingOriginPicker = true
+                    } label: {
+                        Image(systemName: "list.bullet.rectangle.portrait")
+                            .font(.body)
+                            .foregroundColor(.blue)
+                            .padding(7)
+                            .background(Color.blue.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+                
+                if let code = viewModel.originStationCode, !code.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "tram.fill")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
+                        Text("Rail Token: \(code)")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                        Spacer()
+                        Button("Clear Token") {
+                            viewModel.originStationCode = nil
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 4)
+                }
+            }
+            
+            // Popular railway corridors quick tap
+            VStack(alignment: .leading, spacing: 6) {
+                Text("POPULAR RAILWAY CORRIDORS")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.secondary)
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Button {
+                            viewModel.origin = "Puducherry"
+                            viewModel.originStationCode = "PDY"
+                            viewModel.destination = "Dehradun"
+                            viewModel.destinationStationCode = "DDN"
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("Puducherry (PDY)")
+                                Image(systemName: "arrow.right")
+                                    .font(.caption2)
+                                Text("Dehradun (DDN)")
+                            }
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.indigo.opacity(0.1)))
+                            .foregroundColor(.indigo)
+                        }
+                        
+                        Button {
+                            viewModel.origin = "Viramgam"
+                            viewModel.originStationCode = "VG"
+                            viewModel.destination = "Patna"
+                            viewModel.destinationStationCode = "PNBE"
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("Viramgam (VG)")
+                                Image(systemName: "arrow.right")
+                                    .font(.caption2)
+                                Text("Patna (PNBE)")
+                            }
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.blue.opacity(0.1)))
+                            .foregroundColor(.blue)
+                        }
+                        
+                        Button {
+                            viewModel.origin = "Delhi"
+                            viewModel.originStationCode = "NDLS"
+                            viewModel.destination = "Shimla"
+                            viewModel.destinationStationCode = "SML"
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("Delhi (NDLS)")
+                                Image(systemName: "arrow.right")
+                                    .font(.caption2)
+                                Text("Shimla (SML)")
+                            }
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.green.opacity(0.1)))
+                            .foregroundColor(.green)
+                        }
+                    }
+                }
             }
             
             DatePicker("Start Date", selection: $viewModel.startDate, displayedComponents: .date)

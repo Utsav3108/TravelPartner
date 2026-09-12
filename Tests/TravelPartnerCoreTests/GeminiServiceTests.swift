@@ -38,8 +38,8 @@ struct GeminiServiceTests {
     
     @Test("FirebaseGeminiService initializes with model name and falls back gracefully when offline")
     func testFirebaseGeminiServiceFallback() async throws {
-        let service = FirebaseGeminiService(modelName: "gemini-1.5-flash")
-        #expect(service.modelName == "gemini-1.5-flash")
+        let service = FirebaseGeminiService(modelName: "gemini-2.5-flash")
+        #expect(service.modelName == "gemini-2.5-flash")
         
         let prompt = "Family trip to Goa for 4 days with budget ₹60,000"
         let request = try await service.parseTripPrompt(prompt)

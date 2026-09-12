@@ -19,7 +19,7 @@ public final class AppConfiguration: @unchecked Sendable {
     private let searchModeKey = "com.travelpartner.search_mode"
     private let mlModeKey = "com.travelpartner.ml_mode"
     private let geminiModelKey = "com.travelpartner.gemini_model"
-    private let lock = NSLock()
+    private let lock = NSRecursiveLock()
     
     public enum SearchMode: String, CaseIterable, Sendable {
         case mock = "Simulated Real-Time"
@@ -82,6 +82,9 @@ public final class AppConfiguration: @unchecked Sendable {
     public var secretsDict: [String: Any]? {
         let candidates = [
             Bundle.main.path(forResource: "Secrets", ofType: "plist"),
+            Bundle.main.bundleURL.appendingPathComponent("Secrets.plist").path,
+            Bundle.main.bundleURL.appendingPathComponent("Configuration/Secrets.plist").path,
+            "/Users/utsav/Documents/Projects/TravelPartner/Configuration/Secrets.plist",
             "\(FileManager.default.currentDirectoryPath)/Configuration/Secrets.plist",
             "\(FileManager.default.currentDirectoryPath)/Secrets.plist"
         ].compactMap { $0 }
@@ -276,6 +279,60 @@ public final class AppConfiguration: @unchecked Sendable {
         return "\(prefix)...\(suffix)"
     }
     
+    // MARK: - OpenWeather Credentials
+    
+    private let openWeatherKey = "com.travelpartner.openweather_key"
+    
+    public var openWeatherApiKey: String? {
+        if let envKey = ProcessInfo.processInfo.environment["OPENWEATHER_API_KEY"], !envKey.isEmpty {
+            return envKey
+        }
+        if let userKey = UserDefaults.standard.string(forKey: openWeatherKey), !userKey.isEmpty {
+            return userKey
+        }
+        if let secretKey = secretsDict?["OPENWEATHER_API_KEY"] as? String, !secretKey.isEmpty {
+            return secretKey
+        }
+        return nil
+    }
+    
+    public func setOpenWeatherApiKey(_ key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(trimmed, forKey: openWeatherKey)
+    }
+    
+    public var isOpenWeatherConfigured: Bool {
+        guard let key = openWeatherApiKey else { return false }
+        return key.count > 10
+    }
+    
+    // MARK: - Rail Radar Credentials
+    
+    private let railRadarKey = "com.travelpartner.rail_radar_key"
+    
+    public var railRadarApiKey: String? {
+        if let envKey = ProcessInfo.processInfo.environment["RAIL_RADAR_API_KEY"], !envKey.isEmpty {
+            return envKey
+        }
+        if let userKey = UserDefaults.standard.string(forKey: railRadarKey), !userKey.isEmpty {
+            return userKey
+        }
+        if let secretKey = secretsDict?["RAIL_RADAR_API_KEY"] as? String, !secretKey.isEmpty {
+            return secretKey
+        }
+        return nil
+    }
+    
+    public func setRailRadarApiKey(_ key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(trimmed, forKey: railRadarKey)
+    }
+    
+    public var isRailRadarConfigured: Bool {
+        guard let key = railRadarApiKey else { return false }
+        return key.count > 10
+    }
+    
     // MARK: - Engine Settings & Diagnostics
     
     /// Active Search Provider Mode.
@@ -306,10 +363,10 @@ public final class AppConfiguration: @unchecked Sendable {
         }
     }
     
-    /// The active Gemini model name (default: "gemini-1.5-flash").
+    /// The active Gemini model name (default: "gemini-2.5-flash").
     public var geminiModelName: String {
         get {
-            UserDefaults.standard.string(forKey: geminiModelKey) ?? "gemini-1.5-flash"
+            UserDefaults.standard.string(forKey: geminiModelKey) ?? "gemini-2.5-flash"
         }
         set {
             UserDefaults.standard.set(newValue, forKey: geminiModelKey)

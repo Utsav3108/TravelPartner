@@ -3,6 +3,7 @@ import SwiftUI
 public struct ProfileView: View {
     @State private var viewModel = ProfileViewModel()
     @State private var showingDiagnostics: Bool = false
+    @State private var showingLogs: Bool = false
     
     public init() {}
     
@@ -174,6 +175,20 @@ public struct ProfileView: View {
                 // Section 4: System Architecture & Diagnostics
                 Section {
                     Button {
+                        showingLogs = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "terminal.fill")
+                                .foregroundColor(.purple)
+                            Text("Activity & AI Live Logs")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Button {
                         showingDiagnostics = true
                     } label: {
                         HStack {
@@ -195,12 +210,15 @@ public struct ProfileView: View {
                     }
                     .foregroundColor(.orange)
                 } header: {
-                    Text("Diagnostics")
+                    Text("Diagnostics & Observability")
                 }
             }
             .navigationTitle("Profile & Settings")
             .sheet(isPresented: $showingDiagnostics) {
                 DiagnosticsSheetView()
+            }
+            .sheet(isPresented: $showingLogs) {
+                LiveLogsView()
             }
             .task {
                 await viewModel.loadProfile()

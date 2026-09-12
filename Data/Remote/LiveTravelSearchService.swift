@@ -7,6 +7,7 @@ import Foundation
 /// (flights, trains, hotels, places, weather) concurrently rather than waiting sequentially.
 /// Automatically handles cancellation (`Task.isCancelled`) and tolerates partial failures.
 public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchecked Sendable {
+    @available(*, deprecated, message: "Flight search is out of scope. Use trainProvider instead.")
     private let flightProvider: FlightSearchProviderProtocol
     private let trainProvider: TrainSearchProviderProtocol
     private let hotelProvider: HotelSearchProviderProtocol
@@ -36,9 +37,11 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
         
         var bundle = SearchResultsBundle()
         
-        // Use structured concurrency to search flights, trains, hotels, places, and weather in parallel
+        // Use structured concurrency to search trains, hotels, places, and weather in parallel
+        // Note: Flight search has been deprecated as it is out of scope for this railway-centric project.
+        bundle.flights = []
+        
         enum SubSearchResult: Sendable {
-            case flights(Result<[FlightCandidate], Error>)
             case trains(Result<[TrainCandidate], Error>)
             case hotels(Result<[HotelCandidate], Error>)
             case places(Result<[PlaceCandidate], Error>)
@@ -46,37 +49,32 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
         }
         
         try await withThrowingTaskGroup(of: SubSearchResult.self) { group in
-            // Task 1: Flights
+            // Task 1: Trains (Rail Radar Live API / Mock fallback)
             group.addTask {
                 do {
-                    let flights = try await self.flightProvider.searchFlights(
-                        origin: request.origin,
-                        destination: request.destination,
-                        date: request.startDate,
-                        travelers: request.travelersCount
-                    )
-                    return .flights(.success(flights))
-                } catch {
-                    return .flights(.failure(error))
-                }
-            }
-            
-            // Task 2: Trains
-            group.addTask {
-                do {
+                    let originQuery = request.originStationCode ?? request.origin
+                    let destQuery = request.destinationStationCode ?? request.destination
                     let trains = try await self.trainProvider.searchTrains(
-                        origin: request.origin,
-                        destination: request.destination,
+                        origin: originQuery,
+                        destination: destQuery,
                         date: request.startDate,
                         travelers: request.travelersCount
                     )
+                    let isMock = trains.first?.metadata.isMock ?? true
+                    let source = trains.first?.metadata.source ?? "MockTrainSearchProvider"
+                    if isMock {
+                        AppLogger.shared.info("[Simulator] Trains: evaluated \(trains.count) rail candidate(s) from in-memory \(source)", category: .pipeline)
+                    } else {
+                        AppLogger.shared.success("[Live API] Trains: retrieved \(trains.count) live rail schedules from \(source)", category: .pipeline)
+                    }
                     return .trains(.success(trains))
                 } catch {
+                    AppLogger.shared.error("Train search error: \(error.localizedDescription)", category: .pipeline)
                     return .trains(.failure(error))
                 }
             }
             
-            // Task 3: Hotels
+            // Task 2: Hotels
             group.addTask {
                 do {
                     let hotels = try await self.hotelProvider.searchHotels(
@@ -85,26 +83,42 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
                         checkOut: request.endDate,
                         guests: request.travelersCount
                     )
+                    let isMock = hotels.first?.metadata.isMock ?? true
+                    let source = hotels.first?.metadata.source ?? "MockHotelSearchProvider"
+                    if isMock {
+                        AppLogger.shared.info("[Simulator] Hotels: evaluated \(hotels.count) properties from in-memory \(source)", category: .pipeline)
+                    } else {
+                        AppLogger.shared.success("[Live API] Hotels: retrieved \(hotels.count) properties from \(source)", category: .pipeline)
+                    }
                     return .hotels(.success(hotels))
                 } catch {
+                    AppLogger.shared.error("Hotel search error: \(error.localizedDescription)", category: .pipeline)
                     return .hotels(.failure(error))
                 }
             }
             
-            // Task 4: Places
+            // Task 3: Places
             group.addTask {
                 do {
                     let places = try await self.placeProvider.searchPlaces(
                         destination: request.destination,
                         preferences: request.preferences
                     )
+                    let isMock = places.first?.metadata.isMock ?? true
+                    let source = places.first?.metadata.source ?? "DestinationCatalog"
+                    if isMock {
+                        AppLogger.shared.info("[Catalog] Places: retrieved \(places.count) sights from destination catalog", category: .pipeline)
+                    } else {
+                        AppLogger.shared.success("[Live API] Places: retrieved \(places.count) sights from \(source)", category: .pipeline)
+                    }
                     return .places(.success(places))
                 } catch {
+                    AppLogger.shared.error("Places search error: \(error.localizedDescription)", category: .pipeline)
                     return .places(.failure(error))
                 }
             }
             
-            // Task 5: Weather
+            // Task 4: Weather (OpenWeather / OpenMeteo)
             group.addTask {
                 do {
                     let weather = try await self.weatherProvider.getForecast(
@@ -112,8 +126,10 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
                         startDate: request.startDate,
                         days: request.numberOfDays
                     )
+                    AppLogger.shared.info("Weather forecast resolved: \(weather.count) day(s) for '\(request.destination)'", category: .pipeline)
                     return .weather(.success(weather))
                 } catch {
+                    AppLogger.shared.error("Weather forecast error: \(error.localizedDescription)", category: .pipeline)
                     return .weather(.failure(error))
                 }
             }
@@ -122,14 +138,6 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
             for try await result in group {
                 try Task.checkCancellation()
                 switch result {
-                case .flights(let res):
-                    switch res {
-                    case .success(let flights):
-                        bundle.flights = flights
-                    case .failure(let err):
-                        bundle.partialFailures.append("Flights: \(err.localizedDescription)")
-                    }
-                    
                 case .trains(let res):
                     switch res {
                     case .success(let trains):
@@ -167,15 +175,8 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
         
         try Task.checkCancellation()
         
-        // Convert flights and trains into unified transport options
-        var transportOptions: [TransportOption] = []
-        for flight in bundle.flights {
-            transportOptions.append(TransportOption(from: flight))
-        }
-        for train in bundle.trains {
-            transportOptions.append(TransportOption(from: train))
-        }
-        bundle.transportOptions = transportOptions
+        // Convert trains into unified transport options
+        bundle.transportOptions = bundle.trains.map { TransportOption(from: $0) }
         
         // If critical domains (both transport AND hotels) are empty due to catastrophic failure, throw
         if bundle.hotels.isEmpty && bundle.transportOptions.isEmpty {

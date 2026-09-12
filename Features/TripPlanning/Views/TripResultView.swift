@@ -307,7 +307,7 @@ public struct TripResultView: View {
                 HStack(spacing: 8) {
                     quickPromptChip("Give me something cheaper")
                     quickPromptChip("Switch to scenic train")
-                    quickPromptChip("Upgrade to flights")
+                    quickPromptChip("Switch to Vande Bharat Express")
                     quickPromptChip("More relaxation pace")
                 }
             }

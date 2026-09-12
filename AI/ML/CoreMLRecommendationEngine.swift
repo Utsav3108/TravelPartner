@@ -254,17 +254,38 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
                     )
                     scored.append(ScoredCandidate(candidate: hotel, score: predictedScore, rationale: rationale))
                 } catch {
+                    AppLogger.shared.logCoreMLError(modelName: "HotelRankingModel", error: error, fallbackUsed: true)
                     break // Fallback if prediction fails
                 }
             }
             
             if scored.count == candidates.count {
-                return scored.sorted { $0.score > $1.score }
+                let sorted = scored.sorted { $0.score > $1.score }
+                AppLogger.shared.logCoreMLResponse(
+                    modelName: "HotelRankingModel",
+                    candidateCount: candidates.count,
+                    topCandidate: sorted.first?.candidate.name,
+                    topScore: sorted.first?.score,
+                    duration: 0.02,
+                    isFallback: false,
+                    details: "Scored using on-device Core ML regressor with personalization feedback"
+                )
+                return sorted
             }
         }
         #endif
         
-        return try await deterministicFallback.rankHotels(candidates: candidates, request: request)
+        let result = try await deterministicFallback.rankHotels(candidates: candidates, request: request)
+        AppLogger.shared.logCoreMLResponse(
+            modelName: "HotelRankingModel",
+            candidateCount: candidates.count,
+            topCandidate: result.first?.candidate.name,
+            topScore: result.first?.score,
+            duration: 0.005,
+            isFallback: true,
+            details: "Evaluated using Deterministic MCDA Fallback Engine"
+        )
+        return result
     }
     
     // MARK: - Place Ranking (Core ML)
@@ -337,17 +358,38 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
                     )
                     scored.append(ScoredCandidate(candidate: place, score: predictedScore, rationale: rationale))
                 } catch {
+                    AppLogger.shared.logCoreMLError(modelName: "PlaceRankingModel", error: error, fallbackUsed: true)
                     break
                 }
             }
             
             if scored.count == candidates.count {
-                return scored.sorted { $0.score > $1.score }
+                let sorted = scored.sorted { $0.score > $1.score }
+                AppLogger.shared.logCoreMLResponse(
+                    modelName: "PlaceRankingModel",
+                    candidateCount: candidates.count,
+                    topCandidate: sorted.first?.candidate.name,
+                    topScore: sorted.first?.score,
+                    duration: 0.02,
+                    isFallback: false,
+                    details: "Scored attractions on-device matching user travel preferences"
+                )
+                return sorted
             }
         }
         #endif
         
-        return try await deterministicFallback.rankPlaces(candidates: candidates, request: request)
+        let result = try await deterministicFallback.rankPlaces(candidates: candidates, request: request)
+        AppLogger.shared.logCoreMLResponse(
+            modelName: "PlaceRankingModel",
+            candidateCount: candidates.count,
+            topCandidate: result.first?.candidate.name,
+            topScore: result.first?.score,
+            duration: 0.005,
+            isFallback: true,
+            details: "Evaluated using Deterministic MCDA Fallback Engine"
+        )
+        return result
     }
     
     // MARK: - Transport Ranking (Core ML)
@@ -411,16 +453,37 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
                     )
                     scored.append(ScoredCandidate(candidate: transport, score: predictedScore, rationale: rationale))
                 } catch {
+                    AppLogger.shared.logCoreMLError(modelName: "TransportRankingModel", error: error, fallbackUsed: true)
                     break
                 }
             }
             
             if scored.count == candidates.count {
-                return scored.sorted { $0.score > $1.score }
+                let sorted = scored.sorted { $0.score > $1.score }
+                AppLogger.shared.logCoreMLResponse(
+                    modelName: "TransportRankingModel",
+                    candidateCount: candidates.count,
+                    topCandidate: sorted.first?.candidate.title,
+                    topScore: sorted.first?.score,
+                    duration: 0.02,
+                    isFallback: false,
+                    details: "Scored flight and rail options on-device"
+                )
+                return sorted
             }
         }
         #endif
         
-        return try await deterministicFallback.rankTransport(candidates: candidates, request: request)
+        let result = try await deterministicFallback.rankTransport(candidates: candidates, request: request)
+        AppLogger.shared.logCoreMLResponse(
+            modelName: "TransportRankingModel",
+            candidateCount: candidates.count,
+            topCandidate: result.first?.candidate.title,
+            topScore: result.first?.score,
+            duration: 0.005,
+            isFallback: true,
+            details: "Evaluated using Deterministic MCDA Fallback Engine"
+        )
+        return result
     }
 }

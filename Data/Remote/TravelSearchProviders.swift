@@ -66,6 +66,7 @@ public struct SearchResultsBundle: Equatable, Sendable {
 
 // MARK: - Provider Protocols
 
+@available(*, deprecated, message: "Flight search is out of scope. Use TrainSearchProviderProtocol instead.")
 public protocol FlightSearchProviderProtocol: Sendable {
     func searchFlights(origin: String, destination: String, date: Date, travelers: Int) async throws -> [FlightCandidate]
 }

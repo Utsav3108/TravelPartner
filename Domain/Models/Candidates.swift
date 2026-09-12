@@ -41,6 +41,7 @@ public enum TransportMode: String, Codable, CaseIterable, Sendable {
 }
 
 /// A flight option retrieved from real-time flight search.
+@available(*, deprecated, message: "Flight search is out of scope. Use TrainCandidate instead.")
 public struct FlightCandidate: Identifiable, Codable, Equatable, Sendable {
     public let id: UUID
     public let airline: String

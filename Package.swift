@@ -32,18 +32,15 @@ let package = Package(
                 "App/Info.plist",
                 "App/Assets.xcassets",
                 "App/GoogleService-Info.plist",
-                "GoogleService-Info.plist",
                 "Tests",
                 "TravelPartner.xcodeproj",
                 "README.md",
                 "ARCHITECTURE.md",
+                "COREML_ARCHITECTURE.md",
+                "GEMINI_AI_ARCHITECTURE.md",
                 "Configuration/Secrets.example",
                 "Configuration/Secrets.example.xcconfig",
-                "Configuration/Secrets.plist",
-                "Configuration/Secrets.xcconfig",
-                "Secrets.plist",
-                "Secrets.xcconfig",
-                "AI/ML/Models"
+                "Configuration/Secrets.plist"
             ],
             sources: [
                 "App/AppContainer.swift",
@@ -51,7 +48,9 @@ let package = Package(
                 "Features",
                 "Domain",
                 "Data",
-                "AI",
+                "AI/Gemini",
+                "AI/ML/CoreMLRecommendationEngine.swift",
+                "AI/ML/DeterministicRankingEngine.swift",
                 "Configuration",
                 "Shared"
             ],
