@@ -1,10 +1,6 @@
 import Foundation
-#if canImport(FirebaseCore)
 import FirebaseCore
-#endif
-#if canImport(FirebaseAI)
-import FirebaseAI
-#endif
+import FirebaseAILogic
 
 // MARK: - Gemini Service Errors
 
@@ -92,7 +88,6 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
         self.fallback = fallback
     }
     
-    #if canImport(FirebaseAI) && canImport(FirebaseCore)
     /// Safely ensures Firebase is configured before accessing `FirebaseAI`.
     private func ensureFirebaseConfigured() -> Bool {
         return AppConfiguration.shared.configureFirebaseIfNeeded()
@@ -140,13 +135,11 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
             systemInstruction: systemContent
         )
     }
-    #endif
     
     // MARK: - Natural Language Understanding (Prompt Parsing)
     
     public func parseTripPrompt(_ prompt: String) async throws -> TripRequest {
         let startTime = Date()
-        #if canImport(FirebaseAI) && canImport(FirebaseCore)
         let systemPrompt = "Extract travel parameters strictly conforming to the structured response schema."
         
         if let model = getGenerativeModel(systemInstruction: systemPrompt, responseSchema: Self.tripRequestSchema) {
@@ -173,7 +166,6 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
                 )
             }
         }
-        #endif
         
         // Attempt direct Gemini REST API if key is available before offline fallback
         if let key = AppConfiguration.shared.geminiApiKey, key.count > 10 {
@@ -190,7 +182,6 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
     
     public func generateItineraryNarrative(for itinerary: TripItinerary, request: TripRequest) async throws -> String {
         let startTime = Date()
-        #if canImport(FirebaseAI) && canImport(FirebaseCore)
         let prompt = Self.buildNarrativePrompt(for: itinerary, request: request)
         let systemPrompt = """
         You are an inspiring, grounded travel concierge. Write a concise, compelling itinerary narrative.
@@ -223,7 +214,6 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
                 )
             }
         }
-        #endif
         
         // Attempt direct Gemini REST API if key is available before offline fallback
         if let key = AppConfiguration.shared.geminiApiKey, key.count > 10 {
@@ -238,7 +228,6 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
     }
     
     public func generateItineraryNarrativeStream(for itinerary: TripItinerary, request: TripRequest) async throws -> AsyncThrowingStream<String, Error> {
-        #if canImport(FirebaseAI) && canImport(FirebaseCore)
         let prompt = Self.buildNarrativePrompt(for: itinerary, request: request)
         let systemPrompt = """
         You are an inspiring, grounded travel concierge. Write a concise, compelling itinerary narrative.
@@ -292,7 +281,6 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
                 // Fallback to single-yield stream
             }
         }
-        #endif
         
         // Attempt direct REST before static offline fallback
         if let key = AppConfiguration.shared.geminiApiKey, key.count > 10 {
@@ -321,7 +309,6 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
         candidatePool: FilteredCandidatesBundle
     ) async throws -> ItineraryModificationResult {
         let startTime = Date()
-        #if canImport(FirebaseAI) && canImport(FirebaseCore)
         let prompt = Self.buildModificationPrompt(
             instruction: instruction,
             currentItinerary: currentItinerary,
@@ -368,7 +355,6 @@ public final class FirebaseGeminiService: GeminiServiceProtocol, Sendable {
                 )
             }
         }
-        #endif
         
         if let key = AppConfiguration.shared.geminiApiKey, key.count > 10 {
             let direct = GeminiAPIService(apiKey: key, fallback: fallback)
@@ -1087,11 +1073,9 @@ public final class HybridGeminiService: GeminiServiceProtocol, Sendable {
             return GeminiAPIService(apiKey: customKey, modelName: modelName, fallback: fallbackService)
         }
         
-        #if canImport(FirebaseAI) && canImport(FirebaseCore)
         if FirebaseApp.app() != nil || AppConfiguration.shared.isGeminiConfigured {
             return firebaseService
         }
-        #endif
         
         if let key = AppConfiguration.shared.geminiApiKey, !key.isEmpty, key.count > 10 {
             return GeminiAPIService(apiKey: key, modelName: modelName, fallback: fallbackService)

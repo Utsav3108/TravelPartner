@@ -1,7 +1,5 @@
 import Foundation
-#if canImport(FirebaseCore)
 import FirebaseCore
-#endif
 
 /// Centralized configuration management for API keys and cloud services.
 ///
@@ -172,18 +170,15 @@ public final class AppConfiguration: @unchecked Sendable {
     
     /// Whether Firebase credentials and configuration are available.
     public var isFirebaseConfigured: Bool {
-        #if canImport(FirebaseCore)
         if FirebaseApp.app() != nil {
             return true
         }
-        #endif
         return googleServiceInfoPlistFilePath != nil || (firebaseApiKey != nil && firebaseProjectId != nil)
     }
     
     /// Safely configures `FirebaseApp` once if not already initialized.
     @discardableResult
     public func configureFirebaseIfNeeded() -> Bool {
-        #if canImport(FirebaseCore)
         lock.lock()
         defer { lock.unlock() }
         
@@ -212,7 +207,6 @@ public final class AppConfiguration: @unchecked Sendable {
             FirebaseApp.configure(options: options)
             return FirebaseApp.app() != nil
         }
-        #endif
         return false
     }
     

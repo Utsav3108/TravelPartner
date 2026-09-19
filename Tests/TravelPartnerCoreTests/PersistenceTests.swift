@@ -53,4 +53,35 @@ struct PersistenceTests {
         #expect(list.first?.rating == 5)
         #expect(list.first?.comment.contains("Exceptional") == true)
     }
+    
+    @Test("FirebaseTripRepository saves, fetches, and deletes trips with fallback resilience")
+    func testFirebaseTripRepositoryRoundtrip() async throws {
+        let fallback = LocalFirebaseEmulatedRepository(useDiskPersistence: false)
+        let firebaseRepo = FirebaseTripRepository(fallbackRepository: fallback)
+        let coordinator = TripPlanningCoordinator(tripRepository: firebaseRepo)
+        
+        let request = TripRequest(
+            origin: "Mumbai",
+            destination: "Goa",
+            numberOfDays: 2,
+            travelersCount: 2,
+            budget: 18000.0
+        )
+        
+        let itinerary = try await coordinator.planTrip(request: request, userId: "firestore_test_user")
+        
+        let trips = try await firebaseRepo.fetchTrips(for: "firestore_test_user")
+        #expect(trips.count >= 1)
+        #expect(trips.first?.destination == "Goa")
+        #expect(trips.first?.isSavedToFirebase == true)
+        
+        let single = try await firebaseRepo.fetchTrip(byId: itinerary.id)
+        #expect(single?.id == itinerary.id)
+        #expect(single?.destination == "Goa")
+        
+        try await firebaseRepo.deleteTrip(byId: itinerary.id)
+        let afterDelete = try await firebaseRepo.fetchTrips(for: "firestore_test_user")
+        #expect(afterDelete.isEmpty)
+    }
 }
+

@@ -1,7 +1,4 @@
 import SwiftUI
-#if canImport(TravelPartnerCore)
-import TravelPartnerCore
-#endif
 
 @main
 struct TravelPartnerApp: App {

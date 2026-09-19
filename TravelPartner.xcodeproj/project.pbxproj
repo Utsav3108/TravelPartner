@@ -33,6 +33,7 @@
 		658CC9A56A903B7C09E98B2A /* BudgetRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B317E28E3AA47A0B1DD08F8 /* BudgetRules.swift */; };
 		6C4F1273F461D9313BBF8780 /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA97183C7398F3CFF6245C1 /* ProfileViewModel.swift */; };
 		6E5BCE0E01219E3CF4BF6B9F /* TripRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62ED7933F748F0B1933A7A0 /* TripRequest.swift */; };
+		6FA98C113054AB82000635D9 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6FA98C103054AB82000635D8 /* Secrets.plist */; };
 		7311CCB51797B285414B9865 /* Itinerary.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA292867C2E2864E802D6268 /* Itinerary.swift */; };
 		772ED045A3C1F754A8CE6AE4 /* TripWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8066F10E24AEDEAB88662A5 /* TripWizardView.swift */; };
 		82B5C4219216A9BBD8356478 /* GeminiServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9F1186A108A1FB80F51C31 /* GeminiServiceTests.swift */; };
@@ -55,6 +56,9 @@
 		B905BB24AB6A515E5C9686F3 /* GroupRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A63FB43B85E15AAEF7EC65 /* GroupRules.swift */; };
 		BB6926F40B31C13DCC9FCCFD /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A98A8D12AAAE9D910CAC37 /* AppEnvironment.swift */; };
 		C31EB4243053D5FB00D58FD7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C31EB4233053D5FB00D58FD7 /* GoogleService-Info.plist */; };
+		C31EB4263053D68A00D58FD7 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C31EB4253053D68A00D58FD7 /* FirebaseCore */; };
+		C31EB4283053D68A00D58FD7 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = C31EB4273053D68A00D58FD7 /* FirebaseAILogic */; };
+		C31EB42A3053D68A00D58FD7 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C31EB4293053D68A00D58FD7 /* FirebaseFirestore */; };
 		C985F53163D10DC10CC497BF /* Candidates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FB0AED529A115939598922 /* Candidates.swift */; };
 		D1A000012C8899AA00000001 /* DestinationCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000022C8899AA00000002 /* DestinationCatalog.swift */; };
 		D1A000102C8899AA00000010 /* OpenMeteoWeatherProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000112C8899AA00000011 /* OpenMeteoWeatherProvider.swift */; };
@@ -72,7 +76,6 @@
 		F20FC45DBAC039E3CC3878ED /* TripResultViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D3F0B4AF4C1319A2478F86D /* TripResultViewModel.swift */; };
 		F6432694CF561EA2525715B6 /* TravelPartnerCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D706DFAEF3F71EC55BAA105D /* TravelPartnerCoreTests.swift */; };
 		F6C45629BFEDEE6AF2042A8F /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D23676BEE5ED853141E958E /* GeminiService.swift */; };
-		6FA98C113054AB82000635D9 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6FA98C103054AB82000635D8 /* Secrets.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -164,6 +167,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C31EB4263053D68A00D58FD7 /* FirebaseCore in Frameworks */,
+				C31EB4283053D68A00D58FD7 /* FirebaseAILogic in Frameworks */,
+				C31EB42A3053D68A00D58FD7 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -551,6 +557,11 @@
 			dependencies = (
 			);
 			name = TravelPartner;
+			packageProductDependencies = (
+				C31EB4253053D68A00D58FD7 /* FirebaseCore */,
+				C31EB4273053D68A00D58FD7 /* FirebaseAILogic */,
+				C31EB4293053D68A00D58FD7 /* FirebaseFirestore */,
+			);
 			productName = TravelPartner;
 			productReference = 50AC8A2207F14117B81EB61A /* TravelPartner.app */;
 			productType = "com.apple.product-type.application";
@@ -709,6 +720,7 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -747,6 +759,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.travelpartner.TravelPartnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TravelPartner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TravelPartner";
@@ -783,6 +796,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.travelpartner.ai;
 				PRODUCT_MODULE_NAME = TravelPartnerCore;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -802,7 +816,9 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_TESTABILITY = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 			};
@@ -850,6 +866,24 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C31EB4253053D68A00D58FD7 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		C31EB4273053D68A00D58FD7 /* FirebaseAILogic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAILogic;
+		};
+		C31EB4293053D68A00D58FD7 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6A4D6BCFB5C0425BA8A4A8DB /* Project object */;
 }

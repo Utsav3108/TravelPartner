@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CoreML
 
 @Observable
 @MainActor
@@ -28,12 +29,8 @@ public final class ProfileViewModel {
         self.searchMode = config.searchMode
         self.mlMode = config.mlMode
         self.aiEngineStatus = config.aiEngineStatusDescription
-        #if canImport(CoreML)
         let manager = CoreMLModelManager.shared
         self.coreMLStatus = manager.areAllModelsLoaded ? "3 Core ML Models Active (Hotels, Places, Transit)" : "Core ML Ready (On-Demand Loading)"
-        #else
-        self.coreMLStatus = "Core ML Not Supported on this Platform"
-        #endif
     }
     
     public func saveGeminiKey() {
