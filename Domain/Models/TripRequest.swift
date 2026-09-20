@@ -111,8 +111,8 @@ public struct TripRequest: Identifiable, Codable, Equatable, Sendable {
     public let destination: String
     public let originStationCode: String?
     public let destinationStationCode: String?
-    public let startDate: Date
-    public let endDate: Date
+    public var startDate: Date
+    public var endDate: Date
     public let numberOfDays: Int
     public let travelersCount: Int
     public let groupType: GroupType

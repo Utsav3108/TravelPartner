@@ -142,6 +142,7 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
                     switch res {
                     case .success(let trains):
                         bundle.trains = trains
+                        print("Trains Data Fetched: ", trains)
                     case .failure(let err):
                         bundle.partialFailures.append("Trains: \(err.localizedDescription)")
                     }

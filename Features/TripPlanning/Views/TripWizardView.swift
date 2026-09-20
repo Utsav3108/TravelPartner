@@ -346,7 +346,7 @@ public struct TripWizardView: View {
                 }
             }
             
-            DatePicker("Start Date", selection: $viewModel.startDate, displayedComponents: .date)
+            DatePicker("Start Date (This Month)", selection: $viewModel.startDate, in: viewModel.currentMonthRange, displayedComponents: .date)
                 .datePickerStyle(.compact)
             
             Stepper(value: $viewModel.numberOfDays, in: 1...30) {

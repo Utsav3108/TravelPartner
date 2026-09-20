@@ -1,4 +1,5 @@
 import Foundation
+import SwiftyJSON
 
 /// Internal representation of a live train stop at a station.
 public struct StationTrainStop: Sendable {
@@ -114,6 +115,7 @@ actor StationLookupCache {
         if cachedStations == nil {
             guard let url = URL(string: "https://api.railradar.in/v1/lookup/stations") else { return nil }
             var req = URLRequest(url: url)
+            req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
             req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             req.setValue("application/json", forHTTPHeaderField: "Accept")
             req.timeoutInterval = 7.0
@@ -319,88 +321,39 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
         
         AppLogger.shared.info("[Rail Radar] Searching live trains between stations '\(originCode)' and '\(destCode)'", category: .pipeline)
         
-        // 2. Fetch live station timetables concurrently
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        df.timeZone = TimeZone(identifier: "Asia/Kolkata") ?? .current
+        let dateString = df.string(from: date)
+        
+        // 2. Query Direct Trains between Stations First
+        let directTrains = await fetchDirectTrains(from: originCode, to: destCode, dateString: dateString, apiKey: apiKey)
+        
+        if !directTrains.isEmpty {
+            AppLogger.shared.success("[Rail Radar] Found \(directTrains.count) direct train route(s) between \(originCode) and \(destCode)", category: .pipeline)
+            
+            // Enrich candidate direct trains with available classes and exact PRS class fares
+            let enrichedDirectTrains = await enrichDirectTrainsWithFares(
+                directTrains: directTrains,
+                originCode: originCode,
+                destCode: destCode,
+                date: date,
+                dateString: dateString,
+                apiKey: apiKey
+            )
+            
+            if !enrichedDirectTrains.isEmpty {
+                return enrichedDirectTrains
+            }
+        }
+        
+        // 3. If direct trains is empty, dynamically resolve connecting routes via major railway junctions
+        AppLogger.shared.info("[Rail Radar] No direct single-train service between \(originCode) and \(destCode), searching connecting routes via hubs...", category: .pipeline)
+        
         async let originTrainsTask = fetchStationTrains(stationCode: originCode, apiKey: apiKey)
         async let destTrainsTask = fetchStationTrains(stationCode: destCode, apiKey: apiKey)
-        
         let (originTrains, destTrains) = await (originTrainsTask, destTrainsTask)
         
-        // 3. Intersect trains that stop at BOTH stations in the forward journey direction
-        var liveCandidates: [TrainCandidate] = []
-        let cal = Calendar.current
-        let baseDate = cal.startOfDay(for: date)
-        
-        for (trainNumber, originStop) in originTrains {
-            guard let destStop = destTrains[trainNumber] else { continue }
-            
-            // Verify sequence direction (origin stop must precede destination stop)
-            guard originStop.sequence < destStop.sequence else { continue }
-            
-            let distanceKm = max(40.0, destStop.distance - originStop.distance)
-            let durationMinutes = computeDurationMinutes(
-                departureDay: originStop.departureDay,
-                departureTime: originStop.departure,
-                arrivalDay: destStop.arrivalDay,
-                arrivalTime: destStop.arrival
-            )
-            
-            // Build departure Date on requested trip start date
-            var depHour = 8
-            var depMin = 0
-            if let depTimeStr = originStop.departure {
-                let parts = depTimeStr.split(separator: ":").compactMap { Int($0) }
-                if parts.count >= 2 {
-                    depHour = parts[0]
-                    depMin = parts[1]
-                }
-            }
-            let departureDate = cal.date(bySettingHour: depHour, minute: depMin, second: 0, of: baseDate) ?? date
-            let arrivalDate = departureDate.addingTimeInterval(Double(durationMinutes * 60))
-            
-            // Realistic IRCTC fare calculation
-            let isVandeBharat = originStop.trainName.lowercased().contains("vande bharat")
-            let isShatabdi = originStop.trainName.lowercased().contains("shatabdi") || originStop.trainName.lowercased().contains("rajdhani")
-            
-            let ratePerKm: Double
-            let seatClass: String
-            if isVandeBharat {
-                ratePerKm = 2.2
-                seatClass = "CC (AC Chair Car)"
-            } else if isShatabdi {
-                ratePerKm = 1.85
-                seatClass = "3A / CC"
-            } else {
-                ratePerKm = 1.05
-                seatClass = "3A, 2A, SL"
-            }
-            let rawFare = max(380.0, distanceKm * ratePerKm)
-            let roundedFare = (rawFare / 10.0).rounded() * 10.0
-            
-            let candidate = TrainCandidate(
-                trainNumber: trainNumber,
-                trainName: originStop.trainName,
-                originStation: "\(originStop.stationName) (\(originCode))",
-                destinationStation: "\(destStop.stationName) (\(destCode))",
-                departureTime: departureDate,
-                arrivalTime: arrivalDate,
-                durationMinutes: durationMinutes,
-                pricePerPerson: roundedFare,
-                seatClass: seatClass,
-                availabilityStatus: "Available • PRS Confirmed",
-                metadata: CandidateMetadata(source: "RailRadar Live API", expiresInSeconds: 1800, isMock: false)
-            )
-            liveCandidates.append(candidate)
-        }
-        
-        if !liveCandidates.isEmpty {
-            // Sort by fastest duration
-            liveCandidates.sort { $0.durationMinutes < $1.durationMinutes }
-            AppLogger.shared.success("[Rail Radar] Found \(liveCandidates.count) direct live train(s) from \(originCode) to \(destCode) (fastest: \(liveCandidates.first!.durationMinutes / 60)h \(liveCandidates.first!.durationMinutes % 60)m)", category: .pipeline)
-            return liveCandidates
-        }
-        
-        // 4. If no direct single-train service, dynamically resolve connecting hub routes from live timetables
-        AppLogger.shared.info("[Rail Radar] No direct single-train service between \(originCode) and \(destCode), searching connecting routes via major junctions...", category: .pipeline)
         let connectingCandidates = await findConnectingTrains(
             originCode: originCode,
             originTrains: originTrains,
@@ -409,14 +362,381 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             date: date,
             apiKey: apiKey
         )
+        
         if !connectingCandidates.isEmpty {
             AppLogger.shared.success("[Rail Radar] Found \(connectingCandidates.count) connecting live rail route(s) between \(originCode) and \(destCode)", category: .pipeline)
             return connectingCandidates
         }
         
-        // 5. If no connecting route, check corridor fallback or physical calculation
+        // 4. Corridor fallback if no direct or connecting trains
         AppLogger.shared.info("[Rail Radar] No connecting routes found between \(originCode) and \(destCode), checking corridor routes...", category: .pipeline)
         return try await searchCorridorFallback(origin: origin, destination: destination, date: date, travelers: travelers, apiKey: apiKey)
+    }
+    
+    // MARK: - Direct Trains and Fare Resolution
+    
+    private struct DirectTrainItem: Sendable {
+        let trainNumber: String
+        let trainName: String
+        let trainType: String
+        let fromStationCode: String
+        let fromStationName: String
+        let departureTime: String
+        let toStationCode: String
+        let toStationName: String
+        let arrivalTime: String
+        let distanceKm: Double
+        let durationMinutes: Int
+    }
+    
+    private func fetchDirectTrains(from: String, to: String, dateString: String, apiKey: String) async -> [DirectTrainItem] {
+        guard let url = URL(string: "https://api.railradar.in/v1/trains/between/\(from)/\(to)?date=\(dateString)&byCity=true") else {
+            return []
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 8.0
+        
+        let startTime = Date()
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            return []
+        }
+        
+        let duration = Date().timeIntervalSince(startTime)
+        AppLogger.shared.logAPISuccess(
+            endpoint: "api.railradar.in/v1/trains/between/\(from)/\(to)",
+            method: "GET",
+            statusCode: http.statusCode,
+            duration: duration,
+            payloadSummary: "Rail Radar direct trains resolved (\(data.count) bytes)"
+        )
+        
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dataDict = json["data"] as? [String: Any],
+              let trainsList = dataDict["trains"] as? [[String: Any]] else {
+            return []
+        }
+        
+        var results: [DirectTrainItem] = []
+        for item in trainsList {
+            guard let trainObj = item["train"] as? [String: Any],
+                  let number = trainObj["number"] as? String else { continue }
+            
+            let name = trainObj["name"] as? String ?? "Train \(number)"
+            let type = trainObj["type"] as? String ?? "Express"
+            
+            let fromDict = item["from"] as? [String: Any]
+            let fromCode = fromDict?["code"] as? String ?? from
+            let fromName = fromDict?["name"] as? String ?? from
+            let departure = fromDict?["departure"] as? String ?? "08:00"
+            
+            let toDict = item["to"] as? [String: Any]
+            let toCode = toDict?["code"] as? String ?? to
+            let toName = toDict?["name"] as? String ?? to
+            let arrival = toDict?["arrival"] as? String ?? "12:00"
+            
+            let distance = item["distance"] as? Double ?? 200.0
+            let durationMinutes = item["duration"] as? Int ?? 240
+            
+            results.append(DirectTrainItem(
+                trainNumber: number,
+                trainName: name,
+                trainType: type,
+                fromStationCode: fromCode,
+                fromStationName: fromName,
+                departureTime: departure,
+                toStationCode: toCode,
+                toStationName: toName,
+                arrivalTime: arrival,
+                distanceKm: distance,
+                durationMinutes: durationMinutes
+            ))
+        }
+        return results
+    }
+    
+    private func fetchAvailableClasses(trainNumber: String, apiKey: String) async -> [String] {
+        guard let url = URL(string: "https://api.railradar.in/v1/trains/\(trainNumber)?haltsOnly=true") else {
+            return []
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 6.0
+        
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dataDict = json["data"] as? [String: Any],
+              let trainDict = dataDict["train"] as? [String: Any],
+              let classes = trainDict["classes"] as? [String] else {
+            return []
+        }
+        return classes
+    }
+    
+    private func fetchClassFare(
+        trainNumber: String,
+        source: String,
+        destination: String,
+        journeyDate: String,
+        classCode: String,
+        apiKey: String
+    ) async -> TrainClassFare? {
+        guard let url = URL(string: "https://api.railradar.in/v1/trains/\(trainNumber)/fare?source=\(source)&destination=\(destination)&journeyDate=\(journeyDate)&classCode=\(classCode)&quotaCode=GN") else {
+            return nil
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 6.0
+        
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let isSuccess = json["success"] as? Bool, isSuccess,
+              let dataDict = json["data"] as? [String: Any],
+              let breakdown = dataDict["breakdown"] as? [String: Any],
+              let totalFare = breakdown["totalFare"] as? Double ?? (breakdown["totalFare"] as? Int).map(Double.init) else {
+            return nil
+        }
+        
+        let baseFare = breakdown["baseFare"] as? Double ?? (breakdown["baseFare"] as? Int).map(Double.init)
+        let gst = breakdown["goodsServiceTax"] as? Double ?? (breakdown["goodsServiceTax"] as? Int).map(Double.init)
+        let sf = breakdown["superfastCharge"] as? Double ?? (breakdown["superfastCharge"] as? Int).map(Double.init)
+        let res = breakdown["reservationCharge"] as? Double ?? (breakdown["reservationCharge"] as? Int).map(Double.init)
+        let tatkal = breakdown["tatkalFare"] as? Double ?? (breakdown["tatkalFare"] as? Int).map(Double.init)
+        let catering = breakdown["cateringCharge"] as? Double ?? (breakdown["cateringCharge"] as? Int).map(Double.init)
+        let dynamic = breakdown["dynamicFare"] as? Double ?? (breakdown["dynamicFare"] as? Int).map(Double.init)
+        
+        return TrainClassFare(
+            classCode: classCode,
+            className: nil,
+            totalFare: totalFare,
+            baseFare: baseFare,
+            gst: gst,
+            superfastCharge: sf,
+            reservationCharge: res,
+            tatkalFare: tatkal,
+            cateringCharge: catering,
+            dynamicFare: dynamic
+        )
+    }
+    
+    private func computeSyntheticClassFares(distanceKm: Double, isSuperfast: Bool, availableClasses: [String]) -> [TrainClassFare] {
+        let classesToCalculate: [String]
+        let hasSleeperAC = availableClasses.contains("3A") || availableClasses.contains("2A") || availableClasses.contains("3E")
+        let hasChairCar = availableClasses.contains("CC") || availableClasses.contains("EC")
+        
+        if hasSleeperAC {
+            let preferred = ["3A", "2A", "3E"]
+            let matched = preferred.filter { availableClasses.contains($0) }
+            classesToCalculate = matched.isEmpty ? preferred : matched
+        } else if hasChairCar {
+            let preferred = ["CC", "EC"]
+            let matched = preferred.filter { availableClasses.contains($0) }
+            classesToCalculate = matched.isEmpty ? preferred : matched
+        } else if !availableClasses.isEmpty {
+            classesToCalculate = Array(availableClasses.prefix(3))
+        } else {
+            classesToCalculate = ["3A", "2A", "SL"]
+        }
+        
+        return classesToCalculate.map { code in
+            let ratePerKm: Double
+            let resFee: Double
+            let sfFee: Double
+            let hasGst: Bool
+            
+            switch code {
+            case "1A":
+                ratePerKm = 3.0
+                resFee = 60
+                sfFee = isSuperfast ? 75 : 0
+                hasGst = true
+            case "2A":
+                ratePerKm = 1.8
+                resFee = 50
+                sfFee = isSuperfast ? 45 : 0
+                hasGst = true
+            case "3A":
+                ratePerKm = 1.3
+                resFee = 40
+                sfFee = isSuperfast ? 45 : 0
+                hasGst = true
+            case "3E":
+                ratePerKm = 1.2
+                resFee = 40
+                sfFee = isSuperfast ? 45 : 0
+                hasGst = true
+            case "CC":
+                ratePerKm = 1.0
+                resFee = 40
+                sfFee = isSuperfast ? 45 : 0
+                hasGst = true
+            case "EC":
+                ratePerKm = 2.2
+                resFee = 60
+                sfFee = isSuperfast ? 75 : 0
+                hasGst = true
+            case "SL":
+                ratePerKm = 0.6
+                resFee = 20
+                sfFee = isSuperfast ? 30 : 0
+                hasGst = false
+            case "2S":
+                ratePerKm = 0.4
+                resFee = 15
+                sfFee = isSuperfast ? 15 : 0
+                hasGst = false
+            default:
+                ratePerKm = 1.0
+                resFee = 30
+                sfFee = 0
+                hasGst = false
+            }
+            
+            let base = (distanceKm * ratePerKm).rounded()
+            let subtotal = base + resFee + sfFee
+            let gst = hasGst ? (subtotal * 0.05).rounded() : 0.0
+            let total = ((subtotal + gst) / 5.0).rounded() * 5.0
+            
+            return TrainClassFare(
+                classCode: code,
+                totalFare: total,
+                baseFare: base,
+                gst: gst,
+                superfastCharge: sfFee,
+                reservationCharge: resFee
+            )
+        }
+    }
+    
+    private func enrichDirectTrainsWithFares(
+        directTrains: [DirectTrainItem],
+        originCode: String,
+        destCode: String,
+        date: Date,
+        dateString: String,
+        apiKey: String
+    ) async -> [TrainCandidate] {
+        // Take up to 8 representative trains (fastest/most convenient)
+        let sortedTrains = directTrains.sorted { $0.durationMinutes < $1.durationMinutes }
+        let candidatesToQuery = Array(sortedTrains.prefix(8))
+        let cal = Calendar.current
+        let baseDate = cal.startOfDay(for: date)
+        
+        return await withTaskGroup(of: TrainCandidate?.self) { group in
+            for item in candidatesToQuery {
+                group.addTask {
+                    let depParts = item.departureTime.split(separator: ":").compactMap { Int($0) }
+                    let depHour = depParts.count > 0 ? depParts[0] : 8
+                    let depMin = depParts.count > 1 ? depParts[1] : 0
+                    let departureDate = cal.date(bySettingHour: depHour, minute: depMin, second: 0, of: baseDate) ?? date
+                    let arrivalDate = departureDate.addingTimeInterval(Double(item.durationMinutes * 60))
+                    
+                    // 1. Fetch available coach classes for this train
+                    let availableClasses = await self.fetchAvailableClasses(trainNumber: item.trainNumber, apiKey: apiKey)
+                    
+                    // 2. Select target classes per rules:
+                    // Prefer 2A, 3A, 3E if present; else CC, EC, EA if present; else fallback classes
+                    let targetClasses: [String]
+                    let hasSleeperAC = availableClasses.contains("3A") || availableClasses.contains("2A") || availableClasses.contains("3E")
+                    let hasChairCar = availableClasses.contains("CC") || availableClasses.contains("EC")
+                    
+                    if hasSleeperAC {
+                        targetClasses = ["3A", "2A", "3E"].filter { availableClasses.contains($0) }
+                    } else if hasChairCar {
+                        targetClasses = ["CC", "EC"].filter { availableClasses.contains($0) }
+                    } else if !availableClasses.isEmpty {
+                        targetClasses = Array(availableClasses.prefix(3))
+                    } else {
+                        targetClasses = ["3A", "2A"]
+                    }
+                    
+                    // 3. Query PRS fares concurrently for all target classes
+                    var fetchedFares: [TrainClassFare] = []
+                    await withTaskGroup(of: TrainClassFare?.self) { fareGroup in
+                        for code in targetClasses {
+                            fareGroup.addTask {
+                                await self.fetchClassFare(
+                                    trainNumber: item.trainNumber,
+                                    source: item.fromStationCode,
+                                    destination: item.toStationCode,
+                                    journeyDate: dateString,
+                                    classCode: code,
+                                    apiKey: apiKey
+                                )
+                            }
+                        }
+                        for await fare in fareGroup {
+                            if let fare = fare {
+                                fetchedFares.append(fare)
+                            }
+                        }
+                    }
+                    
+                    // Order fares predictably: 3A, 2A, 3E, CC, EC
+                    let classOrder = ["3A", "2A", "3E", "CC", "EC", "1A", "SL", "2S"]
+                    fetchedFares.sort { f1, f2 in
+                        let idx1 = classOrder.firstIndex(of: f1.classCode) ?? 99
+                        let idx2 = classOrder.firstIndex(of: f2.classCode) ?? 99
+                        return idx1 < idx2
+                    }
+                    
+                    let isSuperfast = item.trainType.lowercased().contains("superfast") || item.trainNumber.hasPrefix("12") || item.trainNumber.hasPrefix("22")
+                    let finalFares: [TrainClassFare]
+                    if !fetchedFares.isEmpty {
+                        finalFares = fetchedFares
+                    } else {
+                        finalFares = self.computeSyntheticClassFares(
+                            distanceKm: item.distanceKm,
+                            isSuperfast: isSuperfast,
+                            availableClasses: availableClasses
+                        )
+                    }
+                    
+                    let defaultFare = finalFares.first
+                    let selectedCode = defaultFare?.classCode ?? "3A"
+                    let selectedPrice = defaultFare?.totalFare ?? max(400.0, item.distanceKm * 1.3)
+                    let seatClassString = finalFares.map(\.classCode).joined(separator: ", ")
+                    
+                    return TrainCandidate(
+                        trainNumber: item.trainNumber,
+                        trainName: item.trainName,
+                        originStation: "\(item.fromStationName) (\(item.fromStationCode))",
+                        destinationStation: "\(item.toStationName) (\(item.toStationCode))",
+                        departureTime: departureDate,
+                        arrivalTime: arrivalDate,
+                        durationMinutes: item.durationMinutes,
+                        pricePerPerson: selectedPrice,
+                        seatClass: seatClassString,
+                        availabilityStatus: "Available • PRS Bookable",
+                        classFares: finalFares,
+                        selectedClassCode: selectedCode,
+                        availableClasses: availableClasses.isEmpty ? finalFares.map(\.classCode) : availableClasses,
+                        metadata: CandidateMetadata(source: "RailRadar Live API", expiresInSeconds: 1800, isMock: false)
+                    )
+                }
+            }
+            
+            var results: [TrainCandidate] = []
+            for await candidate in group {
+                if let candidate = candidate {
+                    results.append(candidate)
+                }
+            }
+            return results.sorted { $0.durationMinutes < $1.durationMinutes }
+        }
     }
     
     // MARK: - Connecting Hub Routing
@@ -428,9 +748,10 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
     }
     
     private func fetchRawTrainDetails(trainNumber: String, apiKey: String) async -> RawTrainDetails? {
-        guard let url = URL(string: "https://api.railradar.in/v1/trains/\(trainNumber)") else { return nil }
+        guard let url = URL(string: "https://api.railradar.in/v1/trains/\(trainNumber)?haltsOnly=true") else { return nil }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 7.0
@@ -546,6 +867,14 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             
             let rawFare = max(550.0, totalDistanceKm * 1.05)
             let roundedFare = (rawFare / 10.0).rounded() * 10.0
+            let connectingFares = computeSyntheticClassFares(
+                distanceKm: totalDistanceKm,
+                isSuperfast: true,
+                availableClasses: ["3A", "2A", "CC", "SL"]
+            )
+            let defaultFare = connectingFares.first
+            let selectedCode = defaultFare?.classCode ?? "3A"
+            let selectedPrice = defaultFare?.totalFare ?? roundedFare
             
             let hubDisplayName = leg1.destinationStationName.isEmpty ? hub : leg1.destinationStationName
             let candidate = TrainCandidate(
@@ -556,9 +885,12 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
                 departureTime: departureDate,
                 arrivalTime: arrivalDate,
                 durationMinutes: totalDurationMinutes,
-                pricePerPerson: roundedFare,
+                pricePerPerson: selectedPrice,
                 seatClass: "3A, 2A, CC (Connecting)",
                 availabilityStatus: "Available • Connecting via \(hub)",
+                classFares: connectingFares,
+                selectedClassCode: selectedCode,
+                availableClasses: connectingFares.map(\.classCode),
                 metadata: CandidateMetadata(source: "RailRadar Live API (Connecting Route)", expiresInSeconds: 1800, isMock: false)
             )
             connectingCandidates.append(candidate)
@@ -577,6 +909,7 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
         let startTime = Date()
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 8.0
@@ -594,7 +927,7 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
                     duration: duration,
                     payloadSummary: "Rail Radar station \(stationCode) schedule resolved (\(data.count) bytes)"
                 )
-                
+                print("(fetchStationTrains) Fetched Train List from Rail Radar API:", JSON(data))
                 guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let dataDict = json["data"] as? [String: Any],
                       let trainsList = dataDict["trains"] as? [[String: Any]] else {
@@ -748,9 +1081,10 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
         destinationHint: String,
         apiKey: String
     ) async -> TrainCandidate? {
-        guard let url = URL(string: "https://api.railradar.in/v1/trains/\(trainNumber)") else { return nil }
+        guard let url = URL(string: "https://api.railradar.in/v1/trains/\(trainNumber)?haltsOnly=true") else { return nil }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 7.0
@@ -778,6 +1112,9 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
         
         let rawFare = max(380.0, distance * 1.05)
         let roundedFare = (rawFare / 10.0).rounded() * 10.0
+        let isSuperfast = trainNumber.hasPrefix("12") || trainNumber.hasPrefix("22")
+        let fares = computeSyntheticClassFares(distanceKm: distance, isSuperfast: isSuperfast, availableClasses: ["3A", "2A", "SL"])
+        let selectedFare = fares.first
         
         return TrainCandidate(
             trainNumber: trainNumber,
@@ -787,9 +1124,12 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             departureTime: departureTime,
             arrivalTime: arrivalTime,
             durationMinutes: durationMinutes,
-            pricePerPerson: roundedFare,
-            seatClass: "3A, 2A, SL",
+            pricePerPerson: selectedFare?.totalFare ?? roundedFare,
+            seatClass: fares.map(\.classCode).joined(separator: ", "),
             availabilityStatus: "Available • PRS Bookable",
+            classFares: fares,
+            selectedClassCode: selectedFare?.classCode ?? "3A",
+            availableClasses: fares.map(\.classCode),
             metadata: CandidateMetadata(source: "RailRadar Live API", expiresInSeconds: 1800, isMock: false)
         )
     }

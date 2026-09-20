@@ -78,6 +78,27 @@ public struct HomeView: View {
                                 .foregroundColor(.red)
                         }
                         
+                        // Trip Date (Constrained to Current Month)
+                        HStack(spacing: 8) {
+                            Image(systemName: "calendar")
+                                .foregroundColor(.blue)
+                                .font(.subheadline)
+                            
+                            DatePicker(
+                                "Trip Date (This Month)",
+                                selection: $viewModel.tripDate,
+                                in: viewModel.currentMonthRange,
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.compact)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.06))
+                        )
+                        
                         // Inspiration Chips
                         VStack(alignment: .leading, spacing: 6) {
                             Text("TRY AN IDEA")

@@ -72,6 +72,18 @@ public final class TripResultViewModel {
         self.isRevalidating = false
     }
     
+    public func selectTransportation(_ newTransport: TransportOption) {
+        var updated = itinerary
+        updated.updateSelectedTransportation(newTransport)
+        self.itinerary = updated
+    }
+    
+    public func selectTrainClass(classCode: String) {
+        var updated = itinerary
+        updated.updateSelectedTrainClass(code: classCode)
+        self.itinerary = updated
+    }
+    
     public func saveTrip() async {
         do {
             try await tripRepository.saveTrip(itinerary, for: "demo_user")

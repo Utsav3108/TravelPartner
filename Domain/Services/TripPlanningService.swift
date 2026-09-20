@@ -156,7 +156,8 @@ public final class TripPlanningCoordinator: TripPlanningServiceProtocol, Sendabl
         let (rankedHotels, rankedTransport, rankedPlaces) = try await (rankedHotelsTask, rankedTransportTask, rankedPlacesTask)
         
         let selectedHotel = rankedHotels.first?.candidate
-        let selectedTransport = rankedTransport.first?.candidate
+        var selectedTransport = rankedTransport.first?.candidate
+        selectedTransport?.isRecommended = true
         let topPlaces = rankedPlaces.map(\.candidate)
         
         var combinedRationales: [RecommendationRationale] = []
@@ -168,6 +169,58 @@ public final class TripPlanningCoordinator: TripPlanningServiceProtocol, Sendabl
         }
         for placeScored in rankedPlaces.prefix(6) {
             combinedRationales.append(placeScored.rationale)
+        }
+        
+        // Multi-Train Trade-off Recommendation via Google Gemini
+        if searchResults.trains.count > 1, let primaryTransit = selectedTransport, primaryTransit.mode == .train {
+            do {
+                let trainRecommendation = try await geminiService.recommendTrain(trains: searchResults.trains, request: request)
+                if let recommendedCandidate = searchResults.trains.first(where: { $0.trainNumber == trainRecommendation.recommendedTrainNumber }) {
+                    var option = TransportOption(from: recommendedCandidate)
+                    option.isRecommended = true
+                    option.geminiSelectionRationale = trainRecommendation.rationale
+                    if let recClass = trainRecommendation.recommendedClassCode {
+                        option.updateSelectedClass(code: recClass)
+                    }
+                    
+                    // Attach top 2 alternative direct trains
+                    var alternatives: [TransportOption] = []
+                    for altNum in trainRecommendation.topThreeTrainNumbers where altNum != recommendedCandidate.trainNumber && alternatives.count < 2 {
+                        if let altCandidate = searchResults.trains.first(where: { $0.trainNumber == altNum }) {
+                            var altOption = TransportOption(from: altCandidate)
+                            altOption.isRecommended = false
+                            if let note = trainRecommendation.alternativeNotes[altNum] {
+                                altOption.geminiSelectionRationale = note
+                            }
+                            alternatives.append(altOption)
+                        }
+                    }
+                    // Fallback to remaining candidates if topThree contained fewer than 2 distinct alternatives
+                    for remaining in searchResults.trains where remaining.trainNumber != recommendedCandidate.trainNumber && !alternatives.contains(where: { $0.title.contains(remaining.trainNumber) }) && alternatives.count < 2 {
+                        var altOption = TransportOption(from: remaining)
+                        altOption.isRecommended = false
+                        alternatives.append(altOption)
+                    }
+                    
+                    option.alternativeOptions = alternatives
+                    selectedTransport = option
+                    
+                    // Add/update transit recommendation rationale
+                    combinedRationales.removeAll(where: { $0.itemType == "transport" })
+                    combinedRationales.append(RecommendationRationale(
+                        itemId: option.id.uuidString,
+                        itemType: "transport",
+                        headline: "Selected by Google Gemini",
+                        bullets: [
+                            trainRecommendation.rationale,
+                            "Evaluated \(searchResults.trains.count) trains. Top recommendation and class selected by Google Gemini."
+                        ],
+                        mlScore: 0.96
+                    ))
+                }
+            } catch {
+                AppLogger.shared.warning("Gemini train recommendation fallback: \(error.localizedDescription)", category: .pipeline)
+            }
         }
         
         // Step 5: Itinerary Optimization (Geographic Clustering & Scheduling)

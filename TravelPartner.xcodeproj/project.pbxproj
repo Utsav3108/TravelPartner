@@ -34,6 +34,8 @@
 		6C4F1273F461D9313BBF8780 /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA97183C7398F3CFF6245C1 /* ProfileViewModel.swift */; };
 		6E5BCE0E01219E3CF4BF6B9F /* TripRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62ED7933F748F0B1933A7A0 /* TripRequest.swift */; };
 		6FA98C113054AB82000635D9 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6FA98C103054AB82000635D8 /* Secrets.plist */; };
+		6FD1056D305EF18F00195196 /* SwiftyJSON in Frameworks */ = {isa = PBXBuildFile; productRef = 6FD1056C305EF18F00195196 /* SwiftyJSON */; };
+		6FD1056F305F070800195196 /* Docs.md in Sources */ = {isa = PBXBuildFile; fileRef = 6FD1056E305F070400195196 /* Docs.md */; };
 		7311CCB51797B285414B9865 /* Itinerary.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA292867C2E2864E802D6268 /* Itinerary.swift */; };
 		772ED045A3C1F754A8CE6AE4 /* TripWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8066F10E24AEDEAB88662A5 /* TripWizardView.swift */; };
 		82B5C4219216A9BBD8356478 /* GeminiServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9F1186A108A1FB80F51C31 /* GeminiServiceTests.swift */; };
@@ -112,6 +114,7 @@
 		6224BAD5F42E3E509228D919 /* SavedTripsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedTripsViewModel.swift; sourceTree = "<group>"; };
 		6A9F1186A108A1FB80F51C31 /* GeminiServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiServiceTests.swift; sourceTree = "<group>"; };
 		6FA98C103054AB82000635D8 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
+		6FD1056E305F070400195196 /* Docs.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Docs.md; sourceTree = "<group>"; };
 		701B90AACCBD6AFCF9DFEF69 /* TravelSearchProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelSearchProviders.swift; sourceTree = "<group>"; };
 		711C6602AAE5D361D076A31F /* TripPlanningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlanningService.swift; sourceTree = "<group>"; };
 		7BDDEBC82B5BBB576FD68B49 /* TripRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRequestTests.swift; sourceTree = "<group>"; };
@@ -169,6 +172,7 @@
 			files = (
 				C31EB4263053D68A00D58FD7 /* FirebaseCore in Frameworks */,
 				C31EB4283053D68A00D58FD7 /* FirebaseAILogic in Frameworks */,
+				6FD1056D305EF18F00195196 /* SwiftyJSON in Frameworks */,
 				C31EB42A3053D68A00D58FD7 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -311,6 +315,13 @@
 			path = Data;
 			sourceTree = "<group>";
 		};
+		6FD1056B305EF18F00195196 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		741AD987866A02EA376CD7D1 /* Firebase */ = {
 			isa = PBXGroup;
 			children = (
@@ -395,6 +406,7 @@
 				83561FE31DE352CF1AA55642 /* Configuration */,
 				B46A6AFB1DC88CE23F6E63F1 /* Shared */,
 				74C0354F987B4FC0FDE2C044 /* Tests */,
+				6FD1056B305EF18F00195196 /* Frameworks */,
 				08B6CB2ED2A44721BDC7D59A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -485,6 +497,7 @@
 		D1D0524B025E57AFFF263442 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				6FD1056E305F070400195196 /* Docs.md */,
 				9A6AB5BF2F02AC045EF48498 /* TravelPartnerApp.swift */,
 				EA8184AB99520780EA38DE62 /* AppContainer.swift */,
 				98A98A8D12AAAE9D910CAC37 /* AppEnvironment.swift */,
@@ -561,6 +574,7 @@
 				C31EB4253053D68A00D58FD7 /* FirebaseCore */,
 				C31EB4273053D68A00D58FD7 /* FirebaseAILogic */,
 				C31EB4293053D68A00D58FD7 /* FirebaseFirestore */,
+				6FD1056C305EF18F00195196 /* SwiftyJSON */,
 			);
 			productName = TravelPartner;
 			productReference = 50AC8A2207F14117B81EB61A /* TravelPartner.app */;
@@ -595,6 +609,7 @@
 			mainGroup = 88A7F4E4F1F443AB82C72BA0;
 			packageReferences = (
 				C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				6FD1056A305EF16A00195196 /* XCRemoteSwiftPackageReference "SwiftyJSON" */,
 			);
 			productRefGroup = 08B6CB2ED2A44721BDC7D59A /* Products */;
 			projectDirPath = "";
@@ -646,6 +661,7 @@
 				D2E7AA3D4C4A1B19528EE453 /* CandidateMetadata.swift in Sources */,
 				7311CCB51797B285414B9865 /* Itinerary.swift in Sources */,
 				4BF6B132D4DD626CE3AFF784 /* RecommendationRationale.swift in Sources */,
+				6FD1056F305F070800195196 /* Docs.md in Sources */,
 				2BCCB8216F55495873DD8A0E /* UserProfile.swift in Sources */,
 				658CC9A56A903B7C09E98B2A /* BudgetRules.swift in Sources */,
 				B905BB24AB6A515E5C9686F3 /* GroupRules.swift in Sources */,
@@ -857,6 +873,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		6FD1056A305EF16A00195196 /* XCRemoteSwiftPackageReference "SwiftyJSON" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SwiftyJSON/SwiftyJSON";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.2;
+			};
+		};
 		C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -868,6 +892,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		6FD1056C305EF18F00195196 /* SwiftyJSON */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FD1056A305EF16A00195196 /* XCRemoteSwiftPackageReference "SwiftyJSON" */;
+			productName = SwiftyJSON;
+		};
 		C31EB4253053D68A00D58FD7 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
