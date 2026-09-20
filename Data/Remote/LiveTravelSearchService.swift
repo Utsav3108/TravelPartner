@@ -58,7 +58,8 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
                         origin: originQuery,
                         destination: destQuery,
                         date: request.startDate,
-                        travelers: request.travelersCount
+                        travelers: request.travelersCount,
+                        maxLayoverMinutes: request.maxLayoverMinutes
                     )
                     let isMock = trains.first?.metadata.isMock ?? true
                     let source = trains.first?.metadata.source ?? "MockTrainSearchProvider"
@@ -144,6 +145,10 @@ public final class LiveTravelSearchService: TravelSearchServiceProtocol, @unchec
                         bundle.trains = trains
                         print("Trains Data Fetched: ", trains)
                     case .failure(let err):
+                        if let searchErr = err as? TravelSearchError,
+                           case .excessiveLayoverRequired = searchErr {
+                            throw searchErr
+                        }
                         bundle.partialFailures.append("Trains: \(err.localizedDescription)")
                     }
                     

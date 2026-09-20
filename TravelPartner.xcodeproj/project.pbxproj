@@ -61,6 +61,7 @@
 		C31EB4263053D68A00D58FD7 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C31EB4253053D68A00D58FD7 /* FirebaseCore */; };
 		C31EB4283053D68A00D58FD7 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = C31EB4273053D68A00D58FD7 /* FirebaseAILogic */; };
 		C31EB42A3053D68A00D58FD7 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C31EB4293053D68A00D58FD7 /* FirebaseFirestore */; };
+		C31EB42C3053D68A00D58FD7 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = C31EB42B3053D68A00D58FD7 /* FirebaseAppCheck */; };
 		C985F53163D10DC10CC497BF /* Candidates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FB0AED529A115939598922 /* Candidates.swift */; };
 		D1A000012C8899AA00000001 /* DestinationCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000022C8899AA00000002 /* DestinationCatalog.swift */; };
 		D1A000102C8899AA00000010 /* OpenMeteoWeatherProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000112C8899AA00000011 /* OpenMeteoWeatherProvider.swift */; };
@@ -69,6 +70,7 @@
 		D1A000222C8899AA00000022 /* RailRadarProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000232C8899AA00000023 /* RailRadarProvider.swift */; };
 		D1A000242C8899AA00000024 /* IndianRailwayStations.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000252C8899AA00000025 /* IndianRailwayStations.swift */; };
 		D1A000262C8899AA00000026 /* StationPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000272C8899AA00000027 /* StationPickerSheet.swift */; };
+		D1A000302C8899AA00000030 /* NetworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A000312C8899AA00000031 /* NetworkService.swift */; };
 		D2E7AA3D4C4A1B19528EE453 /* CandidateMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9287B6270FB03A9703E5FFA7 /* CandidateMetadata.swift */; };
 		DA015D2D776D02ABF3F411CD /* Repositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83877CF5EC47E7A55DE79A76 /* Repositories.swift */; };
 		DA65B28C6B4DDF611EAA6E4B /* RationaleCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 352324BBAFECBFFDDE2FD907 /* RationaleCardView.swift */; };
@@ -150,6 +152,7 @@
 		D1A000232C8899AA00000023 /* RailRadarProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RailRadarProvider.swift; sourceTree = "<group>"; };
 		D1A000252C8899AA00000025 /* IndianRailwayStations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndianRailwayStations.swift; sourceTree = "<group>"; };
 		D1A000272C8899AA00000027 /* StationPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationPickerSheet.swift; sourceTree = "<group>"; };
+		D1A000312C8899AA00000031 /* NetworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkService.swift; sourceTree = "<group>"; };
 		D3CD3D2A96DBD082CE82C026 /* TripConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripConstraints.swift; sourceTree = "<group>"; };
 		D706DFAEF3F71EC55BAA105D /* TravelPartnerCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelPartnerCoreTests.swift; sourceTree = "<group>"; };
 		D8066F10E24AEDEAB88662A5 /* TripWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripWizardView.swift; sourceTree = "<group>"; };
@@ -174,6 +177,7 @@
 				C31EB4283053D68A00D58FD7 /* FirebaseAILogic in Frameworks */,
 				6FD1056D305EF18F00195196 /* SwiftyJSON in Frameworks */,
 				C31EB42A3053D68A00D58FD7 /* FirebaseFirestore in Frameworks */,
+				C31EB42C3053D68A00D58FD7 /* FirebaseAppCheck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -362,6 +366,7 @@
 				D1A000212C8899AA00000021 /* OpenWeatherProvider.swift */,
 				D1A000232C8899AA00000023 /* RailRadarProvider.swift */,
 				D1A000252C8899AA00000025 /* IndianRailwayStations.swift */,
+				D1A000312C8899AA00000031 /* NetworkService.swift */,
 				5090BCFE1C2774C8F606D669 /* TravelDataCacheActor.swift */,
 			);
 			path = Remote;
@@ -574,6 +579,7 @@
 				C31EB4253053D68A00D58FD7 /* FirebaseCore */,
 				C31EB4273053D68A00D58FD7 /* FirebaseAILogic */,
 				C31EB4293053D68A00D58FD7 /* FirebaseFirestore */,
+				C31EB42B3053D68A00D58FD7 /* FirebaseAppCheck */,
 				6FD1056C305EF18F00195196 /* SwiftyJSON */,
 			);
 			productName = TravelPartner;
@@ -679,6 +685,7 @@
 				D1A000222C8899AA00000022 /* RailRadarProvider.swift in Sources */,
 				D1A000242C8899AA00000024 /* IndianRailwayStations.swift in Sources */,
 				D1A000262C8899AA00000026 /* StationPickerSheet.swift in Sources */,
+				D1A000302C8899AA00000030 /* NetworkService.swift in Sources */,
 				48DB3A86207302161348B571 /* TravelDataCacheActor.swift in Sources */,
 				519F5E14A2765193BC64AA36 /* FirebaseTripRepository.swift in Sources */,
 				DA015D2D776D02ABF3F411CD /* Repositories.swift in Sources */,
@@ -911,6 +918,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		C31EB42B3053D68A00D58FD7 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C31EB4223053CCF200D58FD7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

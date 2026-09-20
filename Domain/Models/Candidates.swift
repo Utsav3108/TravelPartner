@@ -104,6 +104,7 @@ public struct TrainClassFare: Codable, Equatable, Hashable, Sendable, Identifiab
     public let tatkalFare: Double?
     public let cateringCharge: Double?
     public let dynamicFare: Double?
+    public let isVerified: Bool
     
     public init(
         classCode: String,
@@ -115,7 +116,8 @@ public struct TrainClassFare: Codable, Equatable, Hashable, Sendable, Identifiab
         reservationCharge: Double? = nil,
         tatkalFare: Double? = nil,
         cateringCharge: Double? = nil,
-        dynamicFare: Double? = nil
+        dynamicFare: Double? = nil,
+        isVerified: Bool = true
     ) {
         self.classCode = classCode
         self.className = className ?? TrainClassFare.defaultClassName(for: classCode)
@@ -127,6 +129,7 @@ public struct TrainClassFare: Codable, Equatable, Hashable, Sendable, Identifiab
         self.tatkalFare = tatkalFare
         self.cateringCharge = cateringCharge
         self.dynamicFare = dynamicFare
+        self.isVerified = isVerified
     }
     
     public static func defaultClassName(for code: String) -> String {
@@ -143,6 +146,89 @@ public struct TrainClassFare: Codable, Equatable, Hashable, Sendable, Identifiab
         case "EV": return "Vistadome AC (EV)"
         default: return code
         }
+    }
+}
+
+/// An interchange railway station where a passenger transfers between two connecting train services.
+public struct TrainConnectionHub: Codable, Equatable, Hashable, Sendable {
+    public let stationCode: String
+    public let stationName: String
+    public let arrivalTime: Date
+    public let departureTime: Date
+    public let layoverMinutes: Int
+    
+    public init(
+        stationCode: String,
+        stationName: String,
+        arrivalTime: Date,
+        departureTime: Date,
+        layoverMinutes: Int
+    ) {
+        self.stationCode = stationCode
+        self.stationName = stationName
+        self.arrivalTime = arrivalTime
+        self.departureTime = departureTime
+        self.layoverMinutes = layoverMinutes
+    }
+    
+    public var formattedLayover: String {
+        let hours = layoverMinutes / 60
+        let mins = layoverMinutes % 60
+        if hours > 0 && mins > 0 {
+            return "\(hours)h \(mins)m"
+        } else if hours > 0 {
+            return "\(hours)h"
+        } else {
+            return "\(mins)m"
+        }
+    }
+}
+
+/// A composite connecting train journey consisting of two train legs and an intermediate layover hub.
+public struct TrainConnectingJourney: Identifiable, Codable, Equatable, Sendable {
+    public let id: String
+    public var segments: [TrainCandidate]
+    public let connection: TrainConnectionHub
+    public var geminiRationale: String?
+    public var isRecommended: Bool
+    public let totalDurationMinutes: Int
+    
+    public init(
+        id: String,
+        segments: [TrainCandidate],
+        connection: TrainConnectionHub,
+        geminiRationale: String? = nil,
+        isRecommended: Bool = false,
+        totalDurationMinutes: Int
+    ) {
+        self.id = id
+        self.segments = segments
+        self.connection = connection
+        self.geminiRationale = geminiRationale
+        self.isRecommended = isRecommended
+        self.totalDurationMinutes = totalDurationMinutes
+    }
+    
+    public var totalFarePerPerson: Double {
+        segments.reduce(0.0) { $0 + $1.pricePerPerson }
+    }
+    
+    public var combinedClassSummary: String {
+        segments.compactMap { $0.selectedClassCode ?? $0.seatClass }.joined(separator: " + ")
+    }
+    
+    public var routeSummary: String {
+        guard segments.count >= 2 else { return "" }
+        let orig = segments[0].originStation.components(separatedBy: " (").first ?? segments[0].originStation
+        let hub = connection.stationName.components(separatedBy: " (").first ?? connection.stationName
+        let dest = segments[1].destinationStation.components(separatedBy: " (").first ?? segments[1].destinationStation
+        return "\(orig) → \(hub) → \(dest)"
+    }
+    
+    public var formattedTotalDuration: String {
+        let hours = totalDurationMinutes / 60
+        let mins = totalDurationMinutes % 60
+        return "\(hours)h \(mins)m"
     }
 }
 
@@ -164,7 +250,12 @@ public struct TrainCandidate: Identifiable, Codable, Equatable, Sendable {
     public var availableClasses: [String]
     public var geminiSelectionRationale: String?
     public var isRecommended: Bool
+    public var connectingJourney: TrainConnectingJourney?
     public let metadata: CandidateMetadata
+    
+    public var isFareVerified: Bool {
+        return metadata.isFareVerified && (classFares.isEmpty || classFares.allSatisfy(\.isVerified))
+    }
     
     public init(
         id: UUID = UUID(),
@@ -183,6 +274,7 @@ public struct TrainCandidate: Identifiable, Codable, Equatable, Sendable {
         availableClasses: [String] = [],
         geminiSelectionRationale: String? = nil,
         isRecommended: Bool = false,
+        connectingJourney: TrainConnectingJourney? = nil,
         metadata: CandidateMetadata = CandidateMetadata(source: "RailRadar")
     ) {
         self.id = id
@@ -218,6 +310,7 @@ public struct TrainCandidate: Identifiable, Codable, Equatable, Sendable {
         }
         self.geminiSelectionRationale = geminiSelectionRationale
         self.isRecommended = isRecommended
+        self.connectingJourney = connectingJourney
         self.metadata = metadata
     }
     
@@ -239,7 +332,18 @@ public struct TrainCandidate: Identifiable, Codable, Equatable, Sendable {
         self.availableClasses = try container.decodeIfPresent([String].self, forKey: .availableClasses) ?? []
         self.geminiSelectionRationale = try container.decodeIfPresent(String.self, forKey: .geminiSelectionRationale)
         self.isRecommended = try container.decodeIfPresent(Bool.self, forKey: .isRecommended) ?? false
+        self.connectingJourney = try container.decodeIfPresent(TrainConnectingJourney.self, forKey: .connectingJourney)
         self.metadata = try container.decode(CandidateMetadata.self, forKey: .metadata)
+    }
+    
+    public var formattedDuration: String {
+        let hours = durationMinutes / 60
+        let minutes = durationMinutes % 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
     }
 }
 
@@ -261,7 +365,19 @@ public struct TransportOption: Identifiable, Codable, Equatable, Sendable {
     public var alternativeOptions: [TransportOption]
     public var geminiSelectionRationale: String?
     public var isRecommended: Bool
+    public var connectingJourney: TrainConnectingJourney?
     public let metadata: CandidateMetadata
+    
+    public var isConnecting: Bool {
+        return connectingJourney != nil
+    }
+    
+    public var isFareVerified: Bool {
+        if let connecting = connectingJourney {
+            return connecting.segments.allSatisfy(\.isFareVerified)
+        }
+        return metadata.isFareVerified && (classFares.isEmpty || classFares.allSatisfy(\.isVerified))
+    }
     
     public init(from flight: FlightCandidate) {
         self.id = flight.id
@@ -280,27 +396,64 @@ public struct TransportOption: Identifiable, Codable, Equatable, Sendable {
         self.alternativeOptions = []
         self.geminiSelectionRationale = nil
         self.isRecommended = false
+        self.connectingJourney = nil
         self.metadata = flight.metadata
     }
     
     public init(from train: TrainCandidate) {
         self.id = train.id
         self.mode = .train
-        self.title = "\(train.trainName) (\(train.trainNumber))"
-        self.routeCode = "\(train.originStation) → \(train.destinationStation)"
+        self.title = train.connectingJourney != nil && train.connectingJourney!.segments.count >= 2
+            ? "\(train.connectingJourney!.segments[0].trainName) + \(train.connectingJourney!.segments[1].trainName)"
+            : "\(train.trainName) (\(train.trainNumber))"
+        self.routeCode = train.connectingJourney?.routeSummary ?? "\(train.originStation) → \(train.destinationStation)"
         self.departureStation = train.originStation
         self.arrivalStation = train.destinationStation
         self.departureTime = train.departureTime
         self.arrivalTime = train.arrivalTime
         self.durationMinutes = train.durationMinutes
         self.pricePerPerson = train.pricePerPerson
-        self.stops = 0
+        self.stops = train.connectingJourney != nil ? 1 : 0
         self.classFares = train.classFares
-        self.selectedClassCode = train.selectedClassCode ?? train.seatClass
+        self.selectedClassCode = train.connectingJourney?.combinedClassSummary ?? train.selectedClassCode ?? train.seatClass
         self.alternativeOptions = []
         self.geminiSelectionRationale = train.geminiSelectionRationale
         self.isRecommended = train.isRecommended
+        self.connectingJourney = train.connectingJourney
         self.metadata = train.metadata
+    }
+    
+    public init(from journey: TrainConnectingJourney) {
+        let leg1 = journey.segments.first ?? TrainCandidate(
+            trainNumber: "",
+            trainName: "Train 1",
+            originStation: "",
+            destinationStation: "",
+            departureTime: Date(),
+            arrivalTime: Date(),
+            durationMinutes: 0,
+            pricePerPerson: 0
+        )
+        let leg2 = journey.segments.count > 1 ? journey.segments[1] : leg1
+        
+        self.id = UUID()
+        self.mode = .train
+        self.title = "\(leg1.trainName) + \(leg2.trainName)"
+        self.routeCode = journey.routeSummary
+        self.departureStation = leg1.originStation
+        self.arrivalStation = leg2.destinationStation
+        self.departureTime = leg1.departureTime
+        self.arrivalTime = leg2.arrivalTime
+        self.durationMinutes = journey.totalDurationMinutes
+        self.pricePerPerson = journey.totalFarePerPerson
+        self.stops = 1
+        self.classFares = []
+        self.selectedClassCode = journey.combinedClassSummary
+        self.alternativeOptions = []
+        self.geminiSelectionRationale = journey.geminiRationale
+        self.isRecommended = journey.isRecommended
+        self.connectingJourney = journey
+        self.metadata = CandidateMetadata(source: "RailRadar Live API (Connecting)", expiresInSeconds: 1800, isMock: false)
     }
     
     public init(
@@ -320,6 +473,7 @@ public struct TransportOption: Identifiable, Codable, Equatable, Sendable {
         alternativeOptions: [TransportOption] = [],
         geminiSelectionRationale: String? = nil,
         isRecommended: Bool = false,
+        connectingJourney: TrainConnectingJourney? = nil,
         metadata: CandidateMetadata
     ) {
         self.id = id
@@ -338,6 +492,7 @@ public struct TransportOption: Identifiable, Codable, Equatable, Sendable {
         self.alternativeOptions = alternativeOptions
         self.geminiSelectionRationale = geminiSelectionRationale
         self.isRecommended = isRecommended
+        self.connectingJourney = connectingJourney
         self.metadata = metadata
     }
     
@@ -359,6 +514,7 @@ public struct TransportOption: Identifiable, Codable, Equatable, Sendable {
         self.alternativeOptions = try container.decodeIfPresent([TransportOption].self, forKey: .alternativeOptions) ?? []
         self.geminiSelectionRationale = try container.decodeIfPresent(String.self, forKey: .geminiSelectionRationale)
         self.isRecommended = try container.decodeIfPresent(Bool.self, forKey: .isRecommended) ?? false
+        self.connectingJourney = try container.decodeIfPresent(TrainConnectingJourney.self, forKey: .connectingJourney)
         self.metadata = try container.decode(CandidateMetadata.self, forKey: .metadata)
     }
     
@@ -366,6 +522,19 @@ public struct TransportOption: Identifiable, Codable, Equatable, Sendable {
         guard let fare = classFares.first(where: { $0.classCode.uppercased() == code.uppercased() }) else { return }
         self.selectedClassCode = fare.classCode
         self.pricePerPerson = fare.totalFare
+    }
+    
+    public mutating func updateConnectingSegmentClass(segmentIndex: Int, classCode: String) {
+        guard var connecting = connectingJourney, segmentIndex < connecting.segments.count else { return }
+        var segment = connecting.segments[segmentIndex]
+        if let fare = segment.classFares.first(where: { $0.classCode.uppercased() == classCode.uppercased() }) {
+            segment.selectedClassCode = fare.classCode
+            segment.pricePerPerson = fare.totalFare
+        }
+        connecting.segments[segmentIndex] = segment
+        self.connectingJourney = connecting
+        self.pricePerPerson = connecting.totalFarePerPerson
+        self.selectedClassCode = connecting.combinedClassSummary
     }
     
     public var selectedClassFare: TrainClassFare? {

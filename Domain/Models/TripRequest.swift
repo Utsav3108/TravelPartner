@@ -123,6 +123,11 @@ public struct TripRequest: Identifiable, Codable, Equatable, Sendable {
     public let pace: PacePreference
     public let dietary: DietaryPreference
     public let customNotes: String?
+    public var maxLayoverMinutes: Int
+    
+    public var maxLayoverHours: Int {
+        return maxLayoverMinutes / 60
+    }
     
     public init(
         id: UUID = UUID(),
@@ -141,7 +146,8 @@ public struct TripRequest: Identifiable, Codable, Equatable, Sendable {
         preferences: Set<TravelPreference> = [.nature, .relaxation],
         pace: PacePreference = .moderate,
         dietary: DietaryPreference = .none,
-        customNotes: String? = nil
+        customNotes: String? = nil,
+        maxLayoverMinutes: Int = 300
     ) {
         self.id = id
         self.origin = origin.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -162,6 +168,7 @@ public struct TripRequest: Identifiable, Codable, Equatable, Sendable {
         self.pace = pace
         self.dietary = dietary
         self.customNotes = customNotes
+        self.maxLayoverMinutes = max(60, maxLayoverMinutes)
     }
     
     /// Validates business invariants on the trip request.

@@ -153,6 +153,9 @@ public struct TripResultView: View {
                     onSelectClass: { classCode in
                         viewModel.selectTrainClass(classCode: classCode)
                     },
+                    onSelectConnectingSegmentClass: { segmentIndex, classCode in
+                        viewModel.selectConnectingSegmentClass(segmentIndex: segmentIndex, classCode: classCode)
+                    },
                     onSelectAlternativeTrain: { altOption in
                         viewModel.selectTransportation(altOption)
                     }

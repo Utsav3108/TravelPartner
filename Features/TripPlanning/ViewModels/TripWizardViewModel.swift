@@ -41,6 +41,7 @@ public final class TripWizardViewModel {
     public var pace: PacePreference = .moderate
     public var dietary: DietaryPreference = .none
     public var customNotes: String = ""
+    public var maxLayoverHours: Int = AppConfiguration.shared.maxLayoverMinutes / 60
     
     public var validationError: String? = nil
     
@@ -62,6 +63,7 @@ public final class TripWizardViewModel {
         self.pace = request.pace
         self.dietary = request.dietary
         self.customNotes = request.customNotes ?? ""
+        self.maxLayoverHours = max(1, request.maxLayoverMinutes / 60)
     }
     
     // MARK: - Navigation
@@ -131,7 +133,8 @@ public final class TripWizardViewModel {
             preferences: selectedPreferences,
             pace: pace,
             dietary: dietary,
-            customNotes: customNotes.isEmpty ? nil : customNotes
+            customNotes: customNotes.isEmpty ? nil : customNotes,
+            maxLayoverMinutes: maxLayoverHours * 60
         )
         try request.validate()
         return request

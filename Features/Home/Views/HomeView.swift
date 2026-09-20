@@ -21,17 +21,7 @@ public struct HomeView: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(.blue)
                             Spacer()
-                            HStack(spacing: 4) {
-                                Image(systemName: "cpu")
-                                    .font(.caption2)
-                                Text("Core ML + Gemini")
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(Color.blue.opacity(0.12)))
-                            .foregroundColor(.blue)
+
                         }
                         
                         Text("Where to next?")

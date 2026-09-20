@@ -1,21 +1,44 @@
 import Foundation
 
+// MARK: - Open-Meteo Codable Models
+
+public struct OpenMeteoGeocodingResponse: Codable, Sendable {
+    public struct ResultItem: Codable, Sendable {
+        public let latitude: Double
+        public let longitude: Double
+        public let name: String?
+    }
+    public let results: [ResultItem]?
+}
+
+public struct OpenMeteoForecastResponse: Codable, Sendable {
+    public struct Daily: Codable, Sendable {
+        public let weather_code: [Int]?
+        public let temperature_2m_max: [Double]?
+        public let temperature_2m_min: [Double]?
+        public let precipitation_probability_max: [Int]?
+    }
+    public let daily: Daily?
+}
+
 /// Real-world Live Weather Provider using the free, open Open-Meteo API.
 ///
 /// **Open-Meteo Features:**
-/// - 100% Free, no API key or credit card required
-/// - Live geocoding for any destination worldwide
-/// - 7-14 day daily forecasts including max/min temperatures, precipitation probabilities, and WMO weather codes
-/// - Authentic HTTP requests with live status code and payload logging
+/// - Strictly uses unified `NetworkProtocol` and `Request` for all API calls.
+/// - Parses API payloads cleanly into typed `OpenMeteoGeocodingResponse` and `OpenMeteoForecastResponse` Codable structs.
+/// - 100% Free, no API key or credit card required.
+/// - Live geocoding for any destination worldwide.
+/// - 7-14 day daily forecasts including max/min temperatures, precipitation probabilities, and WMO weather codes.
+/// - Authentic HTTP requests with live status code and payload logging.
 public final class OpenMeteoWeatherSearchProvider: WeatherSearchProviderProtocol, Sendable {
-    private let session: URLSession
+    private let network: NetworkProtocol
     private let fallback: MockWeatherSearchProvider
     
     public init(
-        session: URLSession = .shared,
+        network: NetworkProtocol = Network.shared,
         fallback: MockWeatherSearchProvider = MockWeatherSearchProvider()
     ) {
-        self.session = session
+        self.network = network
         self.fallback = fallback
     }
     
@@ -32,50 +55,19 @@ public final class OpenMeteoWeatherSearchProvider: WeatherSearchProviderProtocol
             return try await fallback.getForecast(destination: destination, startDate: startDate, days: days)
         }
         
-        let geocodeStart = Date()
         var latitude: Double?
         var longitude: Double?
         
         do {
-            var geoRequest = URLRequest(url: geocodeUrl)
-            geoRequest.timeoutInterval = 6.0
-            let (data, response) = try await session.data(for: geoRequest)
-            let duration = Date().timeIntervalSince(geocodeStart)
+            let geoRequest = Request(url: geocodeUrl, timeoutInterval: 6.0)
+            let geoResponse: OpenMeteoGeocodingResponse = try await network.perform(request: geoRequest)
             
-            if let http = response as? HTTPURLResponse {
-                if (200...299).contains(http.statusCode) {
-                    AppLogger.shared.logAPISuccess(
-                        endpoint: "geocoding-api.open-meteo.com/v1/search?name=\(cleanDest)",
-                        method: "GET",
-                        statusCode: http.statusCode,
-                        duration: duration,
-                        payloadSummary: "Geocoding resolved for '\(cleanDest)': \(data.count) bytes"
-                    )
-                    
-                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let results = json["results"] as? [[String: Any]],
-                       let first = results.first {
-                        latitude = first["latitude"] as? Double
-                        longitude = first["longitude"] as? Double
-                    }
-                } else {
-                    AppLogger.shared.logAPIError(
-                        endpoint: "geocoding-api.open-meteo.com/v1/search?name=\(cleanDest)",
-                        method: "GET",
-                        statusCode: http.statusCode,
-                        error: TravelSearchError.providerFailed(provider: "Open-Meteo Geocode", reason: "HTTP status \(http.statusCode)"),
-                        duration: duration
-                    )
-                }
+            if let first = geoResponse.results?.first {
+                latitude = first.latitude
+                longitude = first.longitude
             }
         } catch {
-            let duration = Date().timeIntervalSince(geocodeStart)
-            AppLogger.shared.logAPIError(
-                endpoint: "geocoding-api.open-meteo.com/v1/search?name=\(cleanDest)",
-                method: "GET",
-                error: error,
-                duration: duration
-            )
+            AppLogger.shared.info("[Open-Meteo Provider] Geocoding request failed (\(error.localizedDescription))", category: .pipeline)
         }
         
         // Fallback to offline forecast if geocoding failed or device is offline
@@ -91,77 +83,45 @@ public final class OpenMeteoWeatherSearchProvider: WeatherSearchProviderProtocol
             return try await fallback.getForecast(destination: destination, startDate: startDate, days: days)
         }
         
-        let forecastStart = Date()
         do {
-            var forecastRequest = URLRequest(url: forecastUrl)
-            forecastRequest.timeoutInterval = 7.0
-            let (data, response) = try await session.data(for: forecastRequest)
-            let duration = Date().timeIntervalSince(forecastStart)
+            let forecastRequest = Request(url: forecastUrl, timeoutInterval: 7.0)
+            let forecastResponse: OpenMeteoForecastResponse = try await network.perform(request: forecastRequest)
             
-            guard let http = response as? HTTPURLResponse else {
-                return try await fallback.getForecast(destination: destination, startDate: startDate, days: days)
-            }
-            
-            if (200...299).contains(http.statusCode) {
-                AppLogger.shared.logAPISuccess(
-                    endpoint: "api.open-meteo.com/v1/forecast?lat=\(String(format: "%.2f", lat))&lon=\(String(format: "%.2f", lon))",
-                    method: "GET",
-                    statusCode: http.statusCode,
-                    duration: duration,
-                    payloadSummary: "Retrieved \(forecastDays) days live forecast for '\(cleanDest)'"
-                )
+            if let daily = forecastResponse.daily,
+               let maxTemps = daily.temperature_2m_max,
+               let minTemps = daily.temperature_2m_min,
+               let weatherCodes = daily.weather_code {
                 
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let daily = json["daily"] as? [String: Any],
-                   let maxTemps = daily["temperature_2m_max"] as? [Double],
-                   let minTemps = daily["temperature_2m_min"] as? [Double],
-                   let weatherCodes = daily["weather_code"] as? [Int] {
+                let rainProbs = daily.precipitation_probability_max ?? Array(repeating: 10, count: maxTemps.count)
+                let cal = Calendar.current
+                var parsedForecasts: [WeatherForecast] = []
+                
+                for i in 0..<min(maxTemps.count, forecastDays) {
+                    let dayDate = cal.date(byAdding: .day, value: i, to: startDate) ?? startDate
+                    let maxT = maxTemps[i]
+                    let minT = minTemps[i]
+                    let wmoCode = weatherCodes[i]
+                    let rainPct = rainProbs.indices.contains(i) ? rainProbs[i] : 10
                     
-                    let rainProbs = daily["precipitation_probability_max"] as? [Int] ?? Array(repeating: 10, count: maxTemps.count)
-                    let cal = Calendar.current
-                    var parsedForecasts: [WeatherForecast] = []
+                    let (condition, icon, advisory) = Self.mapWMOCode(wmoCode, maxTemp: maxT, rainChance: rainPct)
                     
-                    for i in 0..<min(maxTemps.count, forecastDays) {
-                        let dayDate = cal.date(byAdding: .day, value: i, to: startDate) ?? startDate
-                        let maxT = maxTemps[i]
-                        let minT = minTemps[i]
-                        let wmoCode = weatherCodes[i]
-                        let rainPct = rainProbs.indices.contains(i) ? rainProbs[i] : 10
-                        
-                        let (condition, icon, advisory) = Self.mapWMOCode(wmoCode, maxTemp: maxT, rainChance: rainPct)
-                        
-                        parsedForecasts.append(WeatherForecast(
-                            date: dayDate,
-                            condition: condition,
-                            iconName: icon,
-                            minTempC: minT,
-                            maxTempC: maxT,
-                            rainChancePct: rainPct,
-                            advisory: advisory
-                        ))
-                    }
-                    
-                    if !parsedForecasts.isEmpty {
-                        return parsedForecasts
-                    }
+                    parsedForecasts.append(WeatherForecast(
+                        date: dayDate,
+                        condition: condition,
+                        iconName: icon,
+                        minTempC: minT,
+                        maxTempC: maxT,
+                        rainChancePct: rainPct,
+                        advisory: advisory
+                    ))
                 }
-            } else {
-                AppLogger.shared.logAPIError(
-                    endpoint: "api.open-meteo.com/v1/forecast",
-                    method: "GET",
-                    statusCode: http.statusCode,
-                    error: TravelSearchError.providerFailed(provider: "Open-Meteo Forecast", reason: "HTTP status \(http.statusCode)"),
-                    duration: duration
-                )
+                
+                if !parsedForecasts.isEmpty {
+                    return parsedForecasts
+                }
             }
         } catch {
-            let duration = Date().timeIntervalSince(forecastStart)
-            AppLogger.shared.logAPIError(
-                endpoint: "api.open-meteo.com/v1/forecast",
-                method: "GET",
-                error: error,
-                duration: duration
-            )
+            AppLogger.shared.info("[Open-Meteo Provider] Forecast request failed (\(error.localizedDescription))", category: .pipeline)
         }
         
         AppLogger.shared.info("[Offline Fallback] Using local weather estimates for '\(destination)'", category: .pipeline)

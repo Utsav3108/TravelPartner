@@ -84,6 +84,12 @@ public final class TripResultViewModel {
         self.itinerary = updated
     }
     
+    public func selectConnectingSegmentClass(segmentIndex: Int, classCode: String) {
+        var updated = itinerary
+        updated.updateConnectingSegmentClass(segmentIndex: segmentIndex, classCode: classCode)
+        self.itinerary = updated
+    }
+    
     public func saveTrip() async {
         do {
             try await tripRepository.saveTrip(itinerary, for: "demo_user")

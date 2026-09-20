@@ -205,6 +205,15 @@ public struct TripItinerary: Identifiable, Codable, Equatable, Sendable {
         self.updatedAt = Date()
     }
     
+    /// Updates the coach class of an individual connecting train leg (segmentIndex 0 or 1), recalculating total trip cost.
+    public mutating func updateConnectingSegmentClass(segmentIndex: Int, classCode: String) {
+        guard var transport = selectedTransportation, transport.isConnecting else { return }
+        transport.updateConnectingSegmentClass(segmentIndex: segmentIndex, classCode: classCode)
+        self.selectedTransportation = transport
+        recalculateCosts()
+        self.updatedAt = Date()
+    }
+    
     /// Recalculates total estimated costs dynamically across stay, transport, activities, and daily allowances.
     public mutating func recalculateCosts() {
         var computedCost: Double = 0

@@ -1742,53 +1742,8 @@ public enum DestinationCatalog {
             "thiruvananthapuram": GeoLocation(latitude: 8.5241, longitude: 76.9366)
         ]
         
-        let origClean = origin.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let destClean = dest.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        var estDistanceKm = 400.0
-        if let oCoord = cityCoords.first(where: { origClean.contains($0.key) })?.value,
-           let dCoord = cityCoords.first(where: { destClean.contains($0.key) })?.value {
-            estDistanceKm = max(80.0, oCoord.distance(to: dCoord) * 1.35)
-        }
-        
-        let avgSpeedKmH = 55.0
-        let estDurationMins = max(90, Int((estDistanceKm / avgSpeedKmH) * 60.0))
-        let fare3A = max(420.0, (estDistanceKm * 1.05 / 10.0).rounded() * 10.0)
-        let fareSL = max(240.0, (estDistanceKm * 0.45 / 10.0).rounded() * 10.0)
-        
-        let departureTime1 = cal.date(bySettingHour: 7, minute: 30, second: 0, of: baseDate) ?? date
-        let arrivalTime1 = departureTime1.addingTimeInterval(Double(estDurationMins * 60))
-        
-        let departureTime2 = cal.date(bySettingHour: 16, minute: 45, second: 0, of: baseDate) ?? date
-        let arrivalTime2 = departureTime2.addingTimeInterval(Double((estDurationMins - 30) * 60))
-        
-        return [
-            TrainCandidate(
-                trainNumber: "12431",
-                trainName: "Superfast Express",
-                originStation: "\(origin) Central",
-                destinationStation: "\(destination) Junction",
-                departureTime: departureTime1,
-                arrivalTime: arrivalTime1,
-                durationMinutes: estDurationMins,
-                pricePerPerson: fare3A,
-                seatClass: "3A",
-                availabilityStatus: "Available (35)",
-                metadata: metadata
-            ),
-            TrainCandidate(
-                trainNumber: "19033",
-                trainName: "Mail Express",
-                originStation: "\(origin) Junction",
-                destinationStation: "\(destination) Terminal",
-                departureTime: departureTime2,
-                arrivalTime: arrivalTime2,
-                durationMinutes: estDurationMins + 45,
-                pricePerPerson: fareSL,
-                seatClass: "SL",
-                availabilityStatus: "Available (60)",
-                metadata: metadata
-            )
-        ]
+        // When no verified direct trains exist for arbitrary origin/destination:
+        // Do NOT synthesize fake direct trains. Return empty so connecting trains are searched instead.
+        return []
     }
 }

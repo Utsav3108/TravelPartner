@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseCore
+import FirebaseAppCheck
 
 /// Centralized configuration management for API keys and cloud services.
 ///
@@ -186,10 +187,22 @@ public final class AppConfiguration: @unchecked Sendable {
             return true
         }
         
+        #if DEBUG
+        // Local development only.
+        // Firebase App Check debug provider allows Simulator/test builds
+        // to pass App Check while Firebase AI Logic enforcement is enabled.
+        let providerFactory = AppCheckDebugProviderFactory()
+        AppCheck.setAppCheckProviderFactory(providerFactory)
+        print("Firebase App Check Debug Provider enabled")
+        #endif
+        
         // 1. Try configuration from discovered GoogleService-Info.plist path
         if let plistPath = googleServiceInfoPlistFilePath,
            let options = FirebaseOptions(contentsOfFile: plistPath) {
             FirebaseApp.configure(options: options)
+            #if DEBUG
+            _ = AppCheck.appCheck()
+            #endif  
             return FirebaseApp.app() != nil
         }
         
@@ -205,6 +218,9 @@ public final class AppConfiguration: @unchecked Sendable {
                 options.storageBucket = bucket
             }
             FirebaseApp.configure(options: options)
+            #if DEBUG
+            _ = AppCheck.appCheck()
+            #endif
             return FirebaseApp.app() != nil
         }
         return false
@@ -374,5 +390,20 @@ public final class AppConfiguration: @unchecked Sendable {
             return "Firebase AI SDK [\(geminiModelName)]\(project)"
         }
         return "Offline Deterministic AI Engine"
+    }
+    
+    // MARK: - Layover Settings
+    
+    private let maxLayoverMinutesKey = "com.travelpartner.max_layover_minutes"
+    
+    /// Global maximum layover in minutes for connecting train journeys (default: 300 minutes / 5 hours).
+    public var maxLayoverMinutes: Int {
+        get {
+            let val = UserDefaults.standard.integer(forKey: maxLayoverMinutesKey)
+            return val > 0 ? val : 300
+        }
+        set {
+            UserDefaults.standard.set(max(60, newValue), forKey: maxLayoverMinutesKey)
+        }
     }
 }
