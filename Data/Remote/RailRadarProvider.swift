@@ -1,6 +1,95 @@
 import Foundation
 import SwiftyJSON
 
+/// A concurrency-safe sliding-window rate limiter.
+///
+/// Example:
+///     10 requests / 60 seconds
+///
+/// Multiple concurrent callers can ask for permission.
+/// The actor serializes access and makes callers wait when necessary.
+public actor RateLimiter {
+
+    private let maxRequests: Int
+    private let window: Duration
+
+    private var requestTimes: [ContinuousClock.Instant] = []
+
+    private let clock = ContinuousClock()
+
+    public init(
+        maxRequests: Int,
+        window: Duration
+    ) {
+        precondition(maxRequests > 0, "maxRequests must be greater than zero")
+
+        self.maxRequests = maxRequests
+        self.window = window
+    }
+
+    /// Wait until this request is allowed to proceed.
+    ///
+    /// Calling this method consumes one slot in the rate limit.
+    public func acquire() async {
+
+        while true {
+
+            let now = clock.now
+
+            // Remove expired requests
+            requestTimes.removeAll { timestamp in
+                timestamp + window <= now
+            }
+
+            // We have capacity
+            if requestTimes.count < maxRequests {
+
+                print("🟢 RateLimiter: Request ALLOWED | active=\(requestTimes.count + 1)/\(maxRequests)")
+
+                requestTimes.append(now)
+                return
+            }
+
+            // No capacity
+            guard let oldestRequest = requestTimes.first else {
+                continue
+            }
+
+            let waitUntil = oldestRequest + window
+
+            print("🟡 RateLimiter: Request SUSPENDED | active=\(requestTimes.count)/\(maxRequests)")
+            print("   Waiting until: \(waitUntil)")
+
+            do {
+                try await clock.sleep(until: waitUntil)
+
+                print("🔵 RateLimiter: Request RESUMED")
+
+            } catch {
+
+                if Task.isCancelled {
+                    print("🔴 RateLimiter: Request CANCELLED while waiting")
+                    return
+                }
+            }
+        }
+    }
+
+    /// Clears all tracked requests.
+    ///
+    /// Useful for testing or resetting the limiter.
+    public func reset() {
+        requestTimes.removeAll()
+    }
+}
+
+extension RateLimiter {
+    static let railRadar = RateLimiter(
+        maxRequests: 9,
+        window: .seconds(60)
+    )
+}
+
 /// Internal representation of a live train stop at a station.
 public struct StationTrainStop: Sendable {
     public let trainNumber: String
@@ -23,7 +112,7 @@ public struct StationTrainStop: Sendable {
 actor StationLookupCache {
     static let shared = StationLookupCache()
     private var cachedStations: [String: String]?
-    
+
     func resolveStationCode(for query: String, apiKey: String, network: NetworkProtocol = Network.shared) async -> String? {
         // 0. Extract token from parentheses if present, e.g. "Puducherry (PDY)" -> "PDY"
         if let openParen = query.range(of: "("), let closeParen = query.range(of: ")") {
@@ -126,7 +215,7 @@ actor StationLookupCache {
             struct StationLookupResponse: Codable {
                 let data: [String: String]?
             }
-            if let res: StationLookupResponse = try? await network.perform(request: req),
+            if let res: StationLookupResponse = try? await network.perform(request: req, limiter: .railRadar),
                let dict = res.data {
                 cachedStations = dict
             }
@@ -577,7 +666,7 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             timeoutInterval: 8.0
         )
         
-        guard let response: RailRadarDirectTrainsResponse = try? await network.perform(request: req),
+        guard let response: RailRadarDirectTrainsResponse = try? await network.perform(request: req, limiter: .railRadar),
               let trainsList = response.data?.trains else {
             return []
         }
@@ -630,7 +719,7 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             ],
             timeoutInterval: 6.0
         )
-        guard let res: RailRadarSingleTrainDetailsResponse = try? await network.perform(request: req) else {
+        guard let res: RailRadarSingleTrainDetailsResponse = try? await network.perform(request: req, limiter: .railRadar) else {
             return []
         }
         return res.data?.train?.classes ?? []
@@ -656,35 +745,44 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             ],
             timeoutInterval: 6.0
         )
-        AppLogger.shared.info("https://api.railradar.in/v1/trains/\(trainNumber)/fare?source=\(source)&destination=\(destination)&journeyDate=\(journeyDate)&classCode=\(classCode)&quotaCode=GN", category: .pipeline)
-        guard let res: RailRadarFareResponse = try? await network.perform(request: req),
-              res.success == true || res.data?.breakdown?.totalFare != nil,
-              let breakdown = res.data?.breakdown,
-              let totalFare = breakdown.totalFare else {
+        AppLogger.shared.info(url.absoluteString, category: .pipeline)
+
+        do {
+            let res: RailRadarFareResponse = try await network.perform(request: req, limiter: .railRadar)
+            let _ = res.success == true || res.data?.breakdown?.totalFare != nil
+            guard let breakdown = res.data?.breakdown else { return nil }
+            let totalFare = breakdown.totalFare
+            
+            let baseFare = breakdown.baseFare
+            let gst = breakdown.goodsServiceTax
+            let sf = breakdown.superfastCharge
+            let resFee = breakdown.reservationCharge
+            let tatkal = breakdown.tatkalFare
+            let catering = breakdown.cateringCharge
+            let dynamic = breakdown.dynamicFare
+            
+            return TrainClassFare(
+                classCode: classCode,
+                className: nil,
+                totalFare: totalFare ?? 0.0,
+                baseFare: baseFare,
+                gst: gst,
+                superfastCharge: sf,
+                reservationCharge: resFee,
+                tatkalFare: tatkal,
+                cateringCharge: catering,
+                dynamicFare: dynamic,
+                isVerified: true
+            )
+        } catch let error as NetworkError {
+            print("Fares Error:", error)
+            return nil
+        } catch {
+            print("Error", error.localizedDescription)
             return nil
         }
         
-        let baseFare = breakdown.baseFare
-        let gst = breakdown.goodsServiceTax
-        let sf = breakdown.superfastCharge
-        let resFee = breakdown.reservationCharge
-        let tatkal = breakdown.tatkalFare
-        let catering = breakdown.cateringCharge
-        let dynamic = breakdown.dynamicFare
-        
-        return TrainClassFare(
-            classCode: classCode,
-            className: nil,
-            totalFare: totalFare,
-            baseFare: baseFare,
-            gst: gst,
-            superfastCharge: sf,
-            reservationCharge: resFee,
-            tatkalFare: tatkal,
-            cateringCharge: catering,
-            dynamicFare: dynamic,
-            isVerified: true
-        )
+
     }
     
     private func computeSyntheticClassFares(distanceKm: Double, isSuperfast: Bool, availableClasses: [String]) -> [TrainClassFare] {
@@ -766,10 +864,10 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             let total = ((subtotal + gst) / 5.0).rounded() * 5.0
             
             return TrainClassFare(
-                classCode: code,
-                totalFare: total,
-                baseFare: base,
-                gst: gst,
+                classCode: "LL",
+                totalFare: 9999,
+                baseFare: 9999,
+                gst: 9999,
                 superfastCharge: sfFee,
                 reservationCharge: resFee,
                 isVerified: false
@@ -855,11 +953,7 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
                     if isFareVerified {
                         finalFares = fetchedFares
                     } else {
-                        finalFares = self.computeSyntheticClassFares(
-                            distanceKm: item.distanceKm,
-                            isSuperfast: isSuperfast,
-                            availableClasses: availableClasses
-                        )
+                        finalFares = []
                     }
                     
                     let defaultFare = finalFares.first
@@ -967,7 +1061,7 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             timeoutInterval: 7.0
         )
         
-        guard let res: RailRadarTrainRouteResponse = try? await network.perform(request: req),
+        guard let res: RailRadarTrainRouteResponse = try? await network.perform(request: req, limiter: .railRadar),
               let routeData = res.data,
               let routeList = routeData.route else {
             return nil
@@ -1737,7 +1831,7 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             timeoutInterval: 8.0
         )
         
-        guard let res: RailRadarStationTrainsResponse = try? await network.perform(request: req),
+        guard let res: RailRadarStationTrainsResponse = try? await network.perform(request: req, limiter: .railRadar),
               let dataDict = res.data,
               let trainsList = dataDict.trains else {
             return [:]
@@ -1868,7 +1962,7 @@ public final class RailRadarTrainSearchProvider: TrainSearchProviderProtocol, Se
             timeoutInterval: 7.0
         )
         
-        let res: RailRadarCorridorTrainResponse? = try? await network.perform(request: req)
+        let res: RailRadarCorridorTrainResponse? = try? await network.perform(request: req, limiter: .railRadar)
         let trainObj = res?.data?.train
         
         let name: String

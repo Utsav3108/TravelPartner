@@ -177,6 +177,12 @@ public protocol NetworkProtocol: Sendable {
         decoder: JSONDecoder
     ) async throws -> T
     
+    func perform<T: Decodable>(
+        request: Request,
+        decoder: JSONDecoder,
+        limiter: RateLimiter?
+    ) async throws -> T
+    
     /// Overload for `perform` accepting a Foundation `URLRequest`.
     func perform<T: Decodable>(
         request: URLRequest,
@@ -186,13 +192,15 @@ public protocol NetworkProtocol: Sendable {
     /// Performs an HTTP request and returns a `NetworkResponse<T>` with full metadata and duration.
     func performWithResponse<T: Decodable>(
         request: Request,
-        decoder: JSONDecoder
+        decoder: JSONDecoder,
+        limiter: RateLimiter?
     ) async throws -> NetworkResponse<T>
     
     /// Overload for `performWithResponse` accepting a Foundation `URLRequest`.
     func performWithResponse<T: Decodable>(
         request: URLRequest,
-        decoder: JSONDecoder
+        decoder: JSONDecoder,
+        limiter: RateLimiter?
     ) async throws -> NetworkResponse<T>
     
     /// Performs an HTTP request and returns the raw `Data`.
@@ -209,17 +217,20 @@ extension NetworkProtocol {
     public func perform<T: Decodable>(request: Request) async throws -> T {
         try await perform(request: request, decoder: JSONDecoder())
     }
+    public func perform<T: Decodable>(request: Request, limiter: RateLimiter? = nil) async throws -> T {
+        try await perform(request: request, decoder: JSONDecoder(), limiter: limiter)
+    }
     
     public func perform<T: Decodable>(request: URLRequest) async throws -> T {
         try await perform(request: request, decoder: JSONDecoder())
     }
     
     public func performWithResponse<T: Decodable>(request: Request) async throws -> NetworkResponse<T> {
-        try await performWithResponse(request: request, decoder: JSONDecoder())
+        try await performWithResponse(request: request, decoder: JSONDecoder(), limiter: nil)
     }
     
     public func performWithResponse<T: Decodable>(request: URLRequest) async throws -> NetworkResponse<T> {
-        try await performWithResponse(request: request, decoder: JSONDecoder())
+        try await performWithResponse(request: request, decoder: JSONDecoder(), limiter: nil)
     }
 }
 
@@ -233,6 +244,7 @@ extension NetworkProtocol {
 /// - Generic parsing into any `Decodable` type using standard or custom `JSONDecoder`.
 /// - Thread-safe (`Sendable`) and built for modern Swift structured concurrency (`async/await`).
 public final class Network: NetworkProtocol, Sendable {
+    
     public static let shared = Network()
     
     private let session: URLSession
@@ -283,6 +295,11 @@ public final class Network: NetworkProtocol, Sendable {
         }
     }
     
+    public func perform<T>(request: Request, decoder: JSONDecoder, limiter: RateLimiter?) async throws -> T where T : Decodable {
+        let response: NetworkResponse<T> = try await performWithResponse(request: request, decoder: decoder, limiter: limiter)
+        return response.value
+    }
+    
     public func performRaw(request: URLRequest) async throws -> (data: Data, response: HTTPURLResponse, duration: TimeInterval) {
         try await performRaw(request: Request(urlRequest: request))
     }
@@ -291,12 +308,15 @@ public final class Network: NetworkProtocol, Sendable {
     
     public func performWithResponse<T: Decodable>(
         request: Request,
-        decoder: JSONDecoder = JSONDecoder()
+        decoder: JSONDecoder = JSONDecoder(),
+        limiter: RateLimiter? = nil
     ) async throws -> NetworkResponse<T> {
         let urlReq = request.asURLRequest()
         let urlString = urlReq.url?.absoluteString ?? "unknown_url"
         let endpoint = (urlReq.url?.host ?? "") + (urlReq.url?.path ?? "")
         let method = urlReq.httpMethod ?? request.method.rawValue
+        
+        await limiter?.acquire()
         
         let (data, http, duration) = try await performRaw(request: request)
         
@@ -354,7 +374,8 @@ public final class Network: NetworkProtocol, Sendable {
     
     public func performWithResponse<T: Decodable>(
         request: URLRequest,
-        decoder: JSONDecoder = JSONDecoder()
+        decoder: JSONDecoder = JSONDecoder(),
+        limiter: RateLimiter? = nil
     ) async throws -> NetworkResponse<T> {
         try await performWithResponse(request: Request(urlRequest: request), decoder: decoder)
     }
