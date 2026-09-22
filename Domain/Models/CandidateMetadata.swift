@@ -15,24 +15,28 @@ public struct CandidateMetadata: Codable, Equatable, Sendable {
     public let retrievedAt: Date
     public let expiresAt: Date
     public let isMock: Bool
+    public let isFareVerified: Bool
     
     public init(
         source: String,
         retrievedAt: Date = Date(),
         expiresInSeconds: TimeInterval = 1800, // 30 minutes default TTL
-        isMock: Bool = false
+        isMock: Bool = false,
+        isFareVerified: Bool = true
     ) {
         self.source = source
         self.retrievedAt = retrievedAt
         self.expiresAt = retrievedAt.addingTimeInterval(expiresInSeconds)
         self.isMock = isMock
+        self.isFareVerified = isFareVerified
     }
     
-    public init(source: String, retrievedAt: Date, expiresAt: Date, isMock: Bool = false) {
+    public init(source: String, retrievedAt: Date, expiresAt: Date, isMock: Bool = false, isFareVerified: Bool = true) {
         self.source = source
         self.retrievedAt = retrievedAt
         self.expiresAt = expiresAt
         self.isMock = isMock
+        self.isFareVerified = isFareVerified
     }
     
     /// Whether the candidate information is currently fresh.

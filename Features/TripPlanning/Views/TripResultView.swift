@@ -149,7 +149,16 @@ public struct TripResultView: View {
                     transport: transport,
                     travelers: viewModel.itinerary.travelersCount,
                     currency: viewModel.itinerary.currency,
-                    rationale: viewModel.itinerary.rationale(for: transport.id.uuidString)
+                    rationale: viewModel.itinerary.rationale(for: transport.id.uuidString),
+                    onSelectClass: { classCode in
+                        viewModel.selectTrainClass(classCode: classCode)
+                    },
+                    onSelectConnectingSegmentClass: { segmentIndex, classCode in
+                        viewModel.selectConnectingSegmentClass(segmentIndex: segmentIndex, classCode: classCode)
+                    },
+                    onSelectAlternativeTrain: { altOption in
+                        viewModel.selectTransportation(altOption)
+                    }
                 )
                 .padding(.horizontal)
             }

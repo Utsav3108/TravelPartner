@@ -1,23 +1,56 @@
 import Foundation
 
+// MARK: - OpenWeather API Codable Models
+
+public struct OpenWeatherCurrentResponse: Codable, Sendable {
+    public struct Coord: Codable, Sendable {
+        public let lat: Double?
+        public let lon: Double?
+    }
+    public struct Main: Codable, Sendable {
+        public let temp: Double?
+        public let temp_min: Double?
+        public let temp_max: Double?
+    }
+    public struct WeatherItem: Codable, Sendable {
+        public let main: String?
+        public let description: String?
+        public let icon: String?
+    }
+    public let coord: Coord?
+    public let main: Main?
+    public let weather: [WeatherItem]?
+}
+
+public struct OpenWeatherForecastResponse: Codable, Sendable {
+    public struct ForecastBlock: Codable, Sendable {
+        public let dt: TimeInterval?
+        public let main: OpenWeatherCurrentResponse.Main?
+        public let weather: [OpenWeatherCurrentResponse.WeatherItem]?
+        public let pop: Double?
+    }
+    public let list: [ForecastBlock]?
+}
+
 /// Production-grade Live Weather Search Provider using the OpenWeather API.
 ///
 /// **Features:**
-/// - Uses live OpenWeather endpoint: `https://api.openweathermap.org/data/2.5/weather` and `/forecast`
-/// - Credentials loaded securely from unversioned `Secrets.plist` or runtime settings
-/// - Real `URLSession` queries with authentic HTTP status logging
-/// - Automatic cascading fallback to `OpenMeteoWeatherSearchProvider` and local catalog if quota is reached or network is unavailable
+/// - Strictly uses unified `NetworkProtocol` and `Request` for API dispatch.
+/// - Parses API payloads cleanly into typed `OpenWeatherCurrentResponse` and `OpenWeatherForecastResponse` Codable structs.
+/// - Credentials loaded securely from unversioned `Secrets.plist` or runtime settings.
+/// - Real HTTP queries with authentic status logging.
+/// - Automatic cascading fallback to `OpenMeteoWeatherSearchProvider` and local catalog if quota is reached or network is unavailable.
 public final class OpenWeatherSearchProvider: WeatherSearchProviderProtocol, Sendable {
-    private let session: URLSession
+    private let network: NetworkProtocol
     private let openMeteoFallback: OpenMeteoWeatherSearchProvider
     private let localFallback: MockWeatherSearchProvider
     
     public init(
-        session: URLSession = .shared,
+        network: NetworkProtocol = Network.shared,
         openMeteoFallback: OpenMeteoWeatherSearchProvider = OpenMeteoWeatherSearchProvider(),
         localFallback: MockWeatherSearchProvider = MockWeatherSearchProvider()
     ) {
-        self.session = session
+        self.network = network
         self.openMeteoFallback = openMeteoFallback
         self.localFallback = localFallback
     }
@@ -40,72 +73,37 @@ public final class OpenWeatherSearchProvider: WeatherSearchProviderProtocol, Sen
             return try await openMeteoFallback.getForecast(destination: destination, startDate: startDate, days: days)
         }
         
-        let startTime = Date()
         var lat: Double?
         var lon: Double?
         var currentWeatherForecast: WeatherForecast?
         
         do {
-            var request = URLRequest(url: weatherUrl)
-            request.timeoutInterval = 7.0
-            let (data, response) = try await session.data(for: request)
-            let duration = Date().timeIntervalSince(startTime)
+            let weatherRequest = Request(url: weatherUrl, timeoutInterval: 7.0)
+            let currentResponse: OpenWeatherCurrentResponse = try await network.perform(request: weatherRequest)
             
-            if let http = response as? HTTPURLResponse {
-                if (200...299).contains(http.statusCode) {
-                    AppLogger.shared.logAPISuccess(
-                        endpoint: "api.openweathermap.org/data/2.5/weather?q=\(cleanDest)",
-                        method: "GET",
-                        statusCode: http.statusCode,
-                        duration: duration,
-                        payloadSummary: "OpenWeather current weather resolved for '\(cleanDest)': \(data.count) bytes"
-                    )
-                    
-                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        if let coord = json["coord"] as? [String: Any] {
-                            lat = coord["lat"] as? Double
-                            lon = coord["lon"] as? Double
-                        }
-                        
-                        let main = json["main"] as? [String: Any]
-                        let temp = main?["temp"] as? Double ?? 20.0
-                        let tempMin = main?["temp_min"] as? Double ?? (temp - 4.0)
-                        let tempMax = main?["temp_max"] as? Double ?? (temp + 4.0)
-                        
-                        let weatherList = json["weather"] as? [[String: Any]]
-                        let weatherFirst = weatherList?.first
-                        let conditionMain = weatherFirst?["main"] as? String ?? "Clear"
-                        let conditionDesc = weatherFirst?["description"] as? String ?? "clear sky"
-                        let iconCode = weatherFirst?["icon"] as? String ?? "01d"
-                        
-                        currentWeatherForecast = WeatherForecast(
-                            date: startDate,
-                            condition: "\(conditionMain) (\(conditionDesc.capitalized))",
-                            iconName: Self.mapOpenWeatherIcon(iconCode),
-                            minTempC: tempMin,
-                            maxTempC: tempMax,
-                            rainChancePct: conditionMain.lowercased().contains("rain") ? 75 : 10,
-                            advisory: "Live reading from OpenWeather: \(String(format: "%.1f", temp))°C."
-                        )
-                    }
-                } else {
-                    AppLogger.shared.logAPIError(
-                        endpoint: "api.openweathermap.org/data/2.5/weather?q=\(cleanDest)",
-                        method: "GET",
-                        statusCode: http.statusCode,
-                        error: TravelSearchError.providerFailed(provider: "OpenWeather", reason: "HTTP \(http.statusCode)"),
-                        duration: duration
-                    )
-                }
-            }
-        } catch {
-            let duration = Date().timeIntervalSince(startTime)
-            AppLogger.shared.logAPIError(
-                endpoint: "api.openweathermap.org/data/2.5/weather?q=\(cleanDest)",
-                method: "GET",
-                error: error,
-                duration: duration
+            lat = currentResponse.coord?.lat
+            lon = currentResponse.coord?.lon
+            
+            let temp = currentResponse.main?.temp ?? 20.0
+            let tempMin = currentResponse.main?.temp_min ?? (temp - 4.0)
+            let tempMax = currentResponse.main?.temp_max ?? (temp + 4.0)
+            
+            let weatherFirst = currentResponse.weather?.first
+            let conditionMain = weatherFirst?.main ?? "Clear"
+            let conditionDesc = weatherFirst?.description ?? "clear sky"
+            let iconCode = weatherFirst?.icon ?? "01d"
+            
+            currentWeatherForecast = WeatherForecast(
+                date: startDate,
+                condition: "\(conditionMain) (\(conditionDesc.capitalized))",
+                iconName: Self.mapOpenWeatherIcon(iconCode),
+                minTempC: tempMin,
+                maxTempC: tempMax,
+                rainChancePct: conditionMain.lowercased().contains("rain") ? 75 : 10,
+                advisory: "Live reading from OpenWeather: \(String(format: "%.1f", temp))°C."
             )
+        } catch {
+            AppLogger.shared.info("[OpenWeather Provider] Current weather request failed (\(error.localizedDescription))", category: .pipeline)
         }
         
         // 2. Next, fetch 5-day / 3-hour forecast using coordinates or city query
@@ -121,71 +119,48 @@ public final class OpenWeatherSearchProvider: WeatherSearchProviderProtocol, Sen
             return try await openMeteoFallback.getForecast(destination: destination, startDate: startDate, days: days)
         }
         
-        let forecastStart = Date()
         do {
-            var req = URLRequest(url: forecastUrl)
-            req.timeoutInterval = 7.0
-            let (data, response) = try await session.data(for: req)
-            let duration = Date().timeIntervalSince(forecastStart)
+            let forecastRequest = Request(url: forecastUrl, timeoutInterval: 7.0)
+            let forecastResponse: OpenWeatherForecastResponse = try await network.perform(request: forecastRequest)
             
-            if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
-                AppLogger.shared.logAPISuccess(
-                    endpoint: "api.openweathermap.org/data/2.5/forecast",
-                    method: "GET",
-                    statusCode: http.statusCode,
-                    duration: duration,
-                    payloadSummary: "OpenWeather 5-day multi-interval forecast retrieved"
-                )
+            if let list = forecastResponse.list, !list.isEmpty {
+                var dailyForecasts: [WeatherForecast] = []
+                let cal = Calendar.current
                 
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let list = json["list"] as? [[String: Any]], !list.isEmpty {
+                // Group 3-hour blocks into daily summaries
+                for dayIndex in 0..<min(days, 5) {
+                    let targetDate = cal.date(byAdding: .day, value: dayIndex, to: startDate) ?? startDate
                     
-                    var dailyForecasts: [WeatherForecast] = []
-                    let cal = Calendar.current
+                    // Select the noon block for this day (or closest block)
+                    let blockIndex = min(dayIndex * 8 + 4, list.count - 1)
+                    let block = list[blockIndex]
                     
-                    // Group 3-hour blocks into daily summaries
-                    for dayIndex in 0..<min(days, 5) {
-                        let targetDate = cal.date(byAdding: .day, value: dayIndex, to: startDate) ?? startDate
-                        
-                        // Select the noon block for this day (or closest block)
-                        let blockIndex = min(dayIndex * 8 + 4, list.count - 1)
-                        let block = list[blockIndex]
-                        
-                        let main = block["main"] as? [String: Any]
-                        let tempMin = main?["temp_min"] as? Double ?? 15.0
-                        let tempMax = main?["temp_max"] as? Double ?? 25.0
-                        let pop = (block["pop"] as? Double ?? 0.1) * 100.0
-                        
-                        let weatherList = block["weather"] as? [[String: Any]]
-                        let weatherItem = weatherList?.first
-                        let conditionMain = weatherItem?["main"] as? String ?? "Partly Cloudy"
-                        let conditionDesc = weatherItem?["description"] as? String ?? "scattered clouds"
-                        let iconCode = weatherItem?["icon"] as? String ?? "02d"
-                        
-                        dailyForecasts.append(WeatherForecast(
-                            date: targetDate,
-                            condition: "\(conditionMain) (\(conditionDesc.capitalized))",
-                            iconName: Self.mapOpenWeatherIcon(iconCode),
-                            minTempC: tempMin,
-                            maxTempC: tempMax,
-                            rainChancePct: Int(pop),
-                            advisory: pop > 50 ? "High chance of precipitation (\(Int(pop))%). Pack rain gear." : "Favorable travel conditions."
-                        ))
-                    }
+                    let tempMin = block.main?.temp_min ?? 15.0
+                    let tempMax = block.main?.temp_max ?? 25.0
+                    let pop = (block.pop ?? 0.1) * 100.0
                     
-                    if !dailyForecasts.isEmpty {
-                        return dailyForecasts
-                    }
+                    let weatherItem = block.weather?.first
+                    let conditionMain = weatherItem?.main ?? "Partly Cloudy"
+                    let conditionDesc = weatherItem?.description ?? "scattered clouds"
+                    let iconCode = weatherItem?.icon ?? "02d"
+                    
+                    dailyForecasts.append(WeatherForecast(
+                        date: targetDate,
+                        condition: "\(conditionMain) (\(conditionDesc.capitalized))",
+                        iconName: Self.mapOpenWeatherIcon(iconCode),
+                        minTempC: tempMin,
+                        maxTempC: tempMax,
+                        rainChancePct: Int(pop),
+                        advisory: pop > 50 ? "High chance of precipitation (\(Int(pop))%). Pack rain gear." : "Favorable travel conditions."
+                    ))
+                }
+                
+                if !dailyForecasts.isEmpty {
+                    return dailyForecasts
                 }
             }
         } catch {
-            let duration = Date().timeIntervalSince(forecastStart)
-            AppLogger.shared.logAPIError(
-                endpoint: "api.openweathermap.org/data/2.5/forecast",
-                method: "GET",
-                error: error,
-                duration: duration
-            )
+            AppLogger.shared.info("[OpenWeather Provider] Forecast request failed (\(error.localizedDescription))", category: .pipeline)
         }
         
         if let current = currentWeatherForecast {

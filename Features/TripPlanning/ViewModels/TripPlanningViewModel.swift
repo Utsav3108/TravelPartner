@@ -14,6 +14,8 @@ public final class TripPlanningViewModel {
     public var completedStages: Set<PlanningStage> = []
     public var generatedItinerary: TripItinerary? = nil
     public var errorMessage: String? = nil
+    public var excessiveLayoverDetails: (shortestMinutes: Int, maxAllowedMinutes: Int)? = nil
+    public var pendingRequest: TripRequest? = nil
     
     private var planningTask: Task<Void, Never>? = nil
     private let coordinator: TripPlanningCoordinator
@@ -28,6 +30,8 @@ public final class TripPlanningViewModel {
         
         isPlanning = true
         errorMessage = nil
+        excessiveLayoverDetails = nil
+        pendingRequest = request
         generatedItinerary = nil
         completedStages.removeAll()
         
@@ -47,6 +51,14 @@ public final class TripPlanningViewModel {
             } catch is CancellationError {
                 self.isPlanning = false
                 self.errorMessage = "Trip generation was cancelled."
+            } catch let searchErr as TravelSearchError {
+                guard !Task.isCancelled else { return }
+                self.isPlanning = false
+                if case .excessiveLayoverRequired(let shortest, let maxAllowed) = searchErr {
+                    self.excessiveLayoverDetails = (shortestMinutes: shortest, maxAllowedMinutes: maxAllowed)
+                } else {
+                    self.errorMessage = searchErr.localizedDescription
+                }
             } catch {
                 guard !Task.isCancelled else { return }
                 self.isPlanning = false
@@ -55,10 +67,18 @@ public final class TripPlanningViewModel {
         }
     }
     
+    public func updateLayoverAndRetry(newLayoverMinutes: Int) {
+        guard var req = pendingRequest else { return }
+        req.maxLayoverMinutes = newLayoverMinutes
+        self.excessiveLayoverDetails = nil
+        self.startPlanning(request: req)
+    }
+    
     public func cancel() {
         planningTask?.cancel()
         planningTask = nil
         isPlanning = false
+        excessiveLayoverDetails = nil
         errorMessage = "Trip generation cancelled by user."
     }
 }

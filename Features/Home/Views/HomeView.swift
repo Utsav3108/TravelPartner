@@ -21,17 +21,7 @@ public struct HomeView: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(.blue)
                             Spacer()
-                            HStack(spacing: 4) {
-                                Image(systemName: "cpu")
-                                    .font(.caption2)
-                                Text("Core ML + Gemini")
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(Color.blue.opacity(0.12)))
-                            .foregroundColor(.blue)
+
                         }
                         
                         Text("Where to next?")
@@ -77,6 +67,27 @@ public struct HomeView: View {
                                 .font(.caption)
                                 .foregroundColor(.red)
                         }
+                        
+                        // Trip Date (Constrained to Current Month)
+                        HStack(spacing: 8) {
+                            Image(systemName: "calendar")
+                                .foregroundColor(.blue)
+                                .font(.subheadline)
+                            
+                            DatePicker(
+                                "Trip Date (This Month)",
+                                selection: $viewModel.tripDate,
+                                in: viewModel.currentMonthRange,
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.compact)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.06))
+                        )
                         
                         // Inspiration Chips
                         VStack(alignment: .leading, spacing: 6) {

@@ -16,10 +16,23 @@ public struct FeaturedDestination: Identifiable, Sendable {
 @MainActor
 public final class HomeViewModel {
     public var promptText: String = "I want to go to Shimla for 5 days with 4 friends. My total budget is ₹50,000. I want a round trip."
+    public var tripDate: Date = Date()
     public var isParsing: Bool = false
     public var parsedRequest: TripRequest? = nil
     public var errorMessage: String? = nil
     public var recentTrips: [TripItinerary] = []
+    
+    public var currentMonthRange: ClosedRange<Date> {
+        let cal = Calendar.current
+        let now = Date()
+        let startOfToday = cal.startOfDay(for: now)
+        guard let range = cal.range(of: .day, in: .month, for: now),
+              let endOfMonth = cal.date(bySetting: .day, value: range.count, of: now),
+              let endOfDay = cal.date(bySettingHour: 23, minute: 59, second: 59, of: endOfMonth) else {
+            return startOfToday...now.addingTimeInterval(86400 * 30)
+        }
+        return startOfToday...endOfDay
+    }
     
     private let geminiService: GeminiServiceProtocol
     private let tripRepository: TripRepositoryProtocol
@@ -139,7 +152,10 @@ public final class HomeViewModel {
         errorMessage = nil
         
         do {
-            let request = try await geminiService.parseTripPrompt(promptText)
+            var request = try await geminiService.parseTripPrompt(promptText)
+            let cal = Calendar.current
+            request.startDate = tripDate
+            request.endDate = cal.date(byAdding: .day, value: request.numberOfDays, to: tripDate) ?? tripDate
             self.parsedRequest = request
             self.isParsing = false
             return request
@@ -151,9 +167,12 @@ public final class HomeViewModel {
     }
     
     public func selectFeatured(_ destination: FeaturedDestination) -> TripRequest {
+        let cal = Calendar.current
         let req = TripRequest(
             origin: destination.defaultOrigin,
             destination: destination.name,
+            startDate: tripDate,
+            endDate: cal.date(byAdding: .day, value: destination.suggestedDays, to: tripDate) ?? tripDate,
             numberOfDays: destination.suggestedDays,
             travelersCount: 4,
             groupType: .friends,

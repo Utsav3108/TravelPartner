@@ -346,7 +346,7 @@ public struct TripWizardView: View {
                 }
             }
             
-            DatePicker("Start Date", selection: $viewModel.startDate, displayedComponents: .date)
+            DatePicker("Start Date (This Month)", selection: $viewModel.startDate, in: viewModel.currentMonthRange, displayedComponents: .date)
                 .datePickerStyle(.compact)
             
             Stepper(value: $viewModel.numberOfDays, in: 1...30) {
@@ -577,6 +577,36 @@ public struct TripWizardView: View {
                     }
                 }
                 .pickerStyle(.menu)
+            }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Max Connecting Layover")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Text("\(viewModel.maxLayoverHours) hours\(viewModel.maxLayoverHours == 5 ? " (Default)" : "")")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
+                }
+                
+                Picker("Max Layover", selection: $viewModel.maxLayoverHours) {
+                    Text("3 hours").tag(3)
+                    Text("4 hours").tag(4)
+                    Text("5 hours (Standard)").tag(5)
+                    Text("6 hours").tag(6)
+                    Text("8 hours").tag(8)
+                    Text("10 hours").tag(10)
+                    Text("12 hours").tag(12)
+                }
+                .pickerStyle(.menu)
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
+                
+                Text("Connecting trains with layovers longer than this will prompt you to extend or cancel.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
             }
         }
     }

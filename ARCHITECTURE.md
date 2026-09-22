@@ -146,7 +146,7 @@ sequenceDiagram
     participant Cache as TravelDataCacheActor
     participant Rules as ConstraintEngine
     participant ML as CoreMLRecommendationEngine
-    participant Opt as ItineraryOptimizer
+    participant Scheduler as ItineraryOptimizer
     participant Gemini as GeminiService
     participant FB as FirebaseTripRepository
 
@@ -181,12 +181,12 @@ sequenceDiagram
     ML->>ML: Core ML inference / MCDA utility scoring
     ML-->>Coord: Ranked candidates + Transparent Rationales
     
-    Note over Coord,Opt: Spatial & Temporal Optimization
-    Coord->>Opt: buildItinerary(rankedPlaces, hotel, transport)
-    Opt->>Opt: Cluster places by Haversine distance
-    Opt->>Opt: Slot activities: Morning, Afternoon, Evening
-    Opt->>Opt: Calculate inter-activity transit times & daily costs
-    Opt-->>Coord: Structured TripItinerary
+    Note over Coord,Scheduler: Spatial & Temporal Optimization
+    Coord->>Scheduler: buildItinerary(rankedPlaces, hotel, transport)
+    Scheduler->>Scheduler: Cluster places by Haversine distance
+    Scheduler->>Scheduler: Slot activities: Morning, Afternoon, Evening
+    Scheduler->>Scheduler: Calculate inter-activity transit times & daily costs
+    Scheduler-->>Coord: Structured TripItinerary
     
     Note over Coord,Gemini: Grounded AI Presentation
     Coord->>Gemini: generateItineraryNarrative(itinerary, request)

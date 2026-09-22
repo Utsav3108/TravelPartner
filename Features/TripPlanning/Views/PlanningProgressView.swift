@@ -117,8 +117,103 @@ public struct PlanningProgressView: View {
                 )
                 .padding(.horizontal, 24)
                 
+                // Layover Exceeded Notice & Interactive Extension Prompt
+                if let layoverDetails = viewModel.excessiveLayoverDetails {
+                    let shortest = layoverDetails.shortestMinutes
+                    let maxAllowed = layoverDetails.maxAllowedMinutes
+                    let shortestHours = shortest / 60
+                    let shortestMins = shortest % 60
+                    let shortestStr = shortestMins > 0 ? "\(shortestHours)h \(shortestMins)m" : "\(shortestHours)h"
+                    let suggestedHours = max(maxAllowed / 60 + 1, (shortest + 59) / 60)
+                    
+                    VStack(spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "clock.badge.exclamationmark")
+                                .font(.title3)
+                                .foregroundColor(.orange)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Connecting Layover Notice")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.orange)
+                                Text("No trains under \(maxAllowed / 60) hours layover")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        
+                        Text("No connecting trains were found under your configured \(maxAllowed / 60)-hour layover limit. The shortest viable connection requires a **\(shortestStr)** layover.")
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        VStack(spacing: 8) {
+                            Button {
+                                viewModel.updateLayoverAndRetry(newLayoverMinutes: suggestedHours * 60)
+                            } label: {
+                                HStack {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                    Text("Allow \(suggestedHours)h Layover & Search")
+                                }
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                            }
+                            
+                            HStack(spacing: 8) {
+                                ForEach([8, 12], id: \.self) { hours in
+                                    if hours > maxAllowed / 60 && hours != suggestedHours {
+                                        Button {
+                                            viewModel.updateLayoverAndRetry(newLayoverMinutes: hours * 60)
+                                        } label: {
+                                            Text("Allow \(hours)h")
+                                                .font(.caption2)
+                                                .fontWeight(.semibold)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 6)
+                                                .background(Color.secondary.opacity(0.1))
+                                                .foregroundColor(.primary)
+                                                .cornerRadius(6)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Button(role: .destructive) {
+                                viewModel.cancel()
+                                onCancel()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "xmark.circle")
+                                    Text("Cancel Plan")
+                                }
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.red)
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.orange.opacity(0.08))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 24)
+                }
+                
                 // Error Alert if any
-                if let error = viewModel.errorMessage {
+                if let error = viewModel.errorMessage, viewModel.excessiveLayoverDetails == nil {
                     VStack(spacing: 8) {
                         HStack {
                             Image(systemName: "exclamationmark.circle.fill")

@@ -1,7 +1,5 @@
 import Foundation
-#if canImport(CoreML)
 import CoreML
-#endif
 
 // MARK: - Core ML Model Manager
 
@@ -9,16 +7,13 @@ import CoreML
 public final class CoreMLModelManager: @unchecked Sendable {
     public static let shared = CoreMLModelManager()
     
-    #if canImport(CoreML)
     private var cachedHotelModel: MLModel?
     private var cachedPlaceModel: MLModel?
     private var cachedTransportModel: MLModel?
     private let lock = NSLock()
-    #endif
     
     private init() {}
     
-    #if canImport(CoreML)
     /// Retrieves or loads the Core ML Hotel ranking model.
     public func getHotelModel(customURL: URL? = nil) -> MLModel? {
         lock.lock()
@@ -149,7 +144,6 @@ public final class CoreMLModelManager: @unchecked Sendable {
         let compiledURL = try MLModel.compileModel(at: url)
         return try MLModel(contentsOf: compiledURL)
     }
-    #endif
 }
 
 // MARK: - Production Core ML Recommendation Engine
@@ -165,11 +159,9 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
     private let deterministicFallback: DeterministicRankingEngine
     private let feedbackRepository: FeedbackRepositoryProtocol?
     
-    #if canImport(CoreML)
     private var customHotelURL: URL?
     private var customPlaceURL: URL?
     private var customTransportURL: URL?
-    #endif
     
     public init(
         deterministicFallback: DeterministicRankingEngine = DeterministicRankingEngine(),
@@ -180,11 +172,9 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
     ) {
         self.deterministicFallback = deterministicFallback
         self.feedbackRepository = feedbackRepository
-        #if canImport(CoreML)
         self.customHotelURL = hotelModelURL
         self.customPlaceURL = placeModelURL
         self.customTransportURL = transportModelURL
-        #endif
     }
     
     // MARK: - Hotel Ranking (Core ML)
@@ -193,7 +183,6 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
         candidates: [HotelCandidate],
         request: TripRequest
     ) async throws -> [ScoredCandidate<HotelCandidate>] {
-        #if canImport(CoreML)
         if let model = CoreMLModelManager.shared.getHotelModel(customURL: customHotelURL) {
             var scored: [ScoredCandidate<HotelCandidate>] = []
             let nights = max(1, request.numberOfDays - 1)
@@ -273,7 +262,6 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
                 return sorted
             }
         }
-        #endif
         
         let result = try await deterministicFallback.rankHotels(candidates: candidates, request: request)
         AppLogger.shared.logCoreMLResponse(
@@ -294,7 +282,6 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
         candidates: [PlaceCandidate],
         request: TripRequest
     ) async throws -> [ScoredCandidate<PlaceCandidate>] {
-        #if canImport(CoreML)
         if let model = CoreMLModelManager.shared.getPlaceModel(customURL: customPlaceURL) {
             var scored: [ScoredCandidate<PlaceCandidate>] = []
             let feedbackSignals = (try? await feedbackRepository?.fetchFeedback(for: request.id)) ?? []
@@ -377,7 +364,6 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
                 return sorted
             }
         }
-        #endif
         
         let result = try await deterministicFallback.rankPlaces(candidates: candidates, request: request)
         AppLogger.shared.logCoreMLResponse(
@@ -398,7 +384,6 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
         candidates: [TransportOption],
         request: TripRequest
     ) async throws -> [ScoredCandidate<TransportOption>] {
-        #if canImport(CoreML)
         if let model = CoreMLModelManager.shared.getTransportModel(customURL: customTransportURL) {
             var scored: [ScoredCandidate<TransportOption>] = []
             let feedbackSignals = (try? await feedbackRepository?.fetchFeedback(for: request.id)) ?? []
@@ -472,7 +457,6 @@ public final class CoreMLRecommendationEngine: RecommendationEngineProtocol, @un
                 return sorted
             }
         }
-        #endif
         
         let result = try await deterministicFallback.rankTransport(candidates: candidates, request: request)
         AppLogger.shared.logCoreMLResponse(
